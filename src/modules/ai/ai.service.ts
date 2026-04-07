@@ -61,12 +61,19 @@ ${rawJobDescription}
         try {
             const response = await fetch(url, {
                 method: "POST",
-                headers: { 
+                headers: {
                     "Content-Type": "application/json",
                     "x-goog-api-key": this.apiKey
                 },
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0,
+                        topP: 0.1,
+                        topK: 40,
+                        maxOutputTokens: 8192,
+                        responseMimeType: "application/json"
+                    },
                 }),
                 signal: AbortSignal.timeout(20000), // 20-second timeout
             });
@@ -85,21 +92,29 @@ ${rawJobDescription}
             const cleanedText = this.extractJSON(text);
 
             // Parse JSON safely
-            const parsed: JobJSON = JSON.parse(cleanedText);
+            let parsed: JobJSON;
+            try {
+                parsed = JSON.parse(cleanedText);
+            } catch (jsonErr: any) {
+                console.error("❌ JSON Parse Error:", jsonErr.message);
+                console.error("Received text length:", cleanedText.length);
+                console.error("Text snippet (last 100 chars):", cleanedText.slice(-100));
+                return null;
+            }
 
             // Validate against schema using cached validator
             const valid = this.jobJsonValidator(parsed);
             if (!valid) {
-                console.error("Validation Errors:", this.jobJsonValidator.errors);
+                console.error("❌ Validation Errors:", JSON.stringify(this.jobJsonValidator.errors, null, 2));
                 return null;
             }
 
             return parsed;
         } catch (err: any) {
             if (err.name === "AbortError") {
-                console.error("Error: AI service request timed out after 20 seconds.");
+                console.error("❌ Error: AI service request timed out after 20 seconds.");
             } else {
-                console.error("Error:", err.message);
+                console.error("❌ Error:", err.message);
             }
             return null;
         }
