@@ -1,0 +1,310 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Flexible Universal Job Schema",
+    "type": "object",
+    "required": [
+        "_id",
+        "title",
+        "company",
+        "description",
+        "domain",
+        "metadata",
+        "scoring_config"
+    ],
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "company": {
+            "type": "object",
+            "required": [
+                "name",
+                "location"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "object",
+                    "required": [
+                        "city",
+                        "country"
+                    ],
+                    "properties": {
+                        "city": {
+                            "type": "string"
+                        },
+                        "country": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "employment_type": {
+            "type": "string",
+            "enum": [
+                "full_time",
+                "part_time",
+                "contract",
+                "temporary",
+                "internship"
+            ]
+        },
+        "seniority_level": {
+            "type": "string",
+            "enum": [
+                "junior",
+                "mid",
+                "senior",
+                "lead",
+                "manager",
+                "director"
+            ]
+        },
+        "description": {
+            "type": "object",
+            "required": [
+                "raw"
+            ],
+            "properties": {
+                "raw": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                }
+            }
+        },
+        "requirements": {
+            "type": "object",
+            "properties": {
+                "experience": {
+                    "type": "object",
+                    "properties": {
+                        "min_years": {
+                            "type": "number"
+                        },
+                        "max_years": {
+                            "type": [
+                                "number",
+                                "null"
+                            ]
+                        },
+                        "roles": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "education": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "level": {
+                                "type": "string"
+                            },
+                            "fields": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "level",
+                            "fields"
+                        ]
+                    }
+                },
+                "certifications": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "skills": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "required": {
+                        "type": "boolean"
+                    },
+                    "weight": {
+                        "type": "number"
+                    },
+                    "level": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "resources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "required": {
+                        "type": "boolean"
+                    }
+                }
+            }
+        },
+        "domain": {
+            "type": "object",
+            "required": [
+                "primary"
+            ],
+            "properties": {
+                "primary": {
+                    "type": "string"
+                },
+                "secondary": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "responsibilities": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "soft_skills": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "weight": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "physical_requirements": {
+            "type": "object",
+            "properties": {
+                "lifting_kg": {
+                    "type": "number"
+                },
+                "standing_hours": {
+                    "type": "number"
+                }
+            }
+        },
+        "languages": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "work_conditions": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "travel_required": {
+            "type": [
+                "boolean",
+                "null"
+            ]
+        },
+        "scoring_config": {
+            "type": "object",
+            "required": [
+                "weights",
+                "rules"
+            ],
+            "properties": {
+                "weights": {
+                    "type": "object",
+                    "properties": {
+                        "skills": {
+                            "type": "number"
+                        },
+                        "experience": {
+                            "type": "number"
+                        },
+                        "education": {
+                            "type": "number"
+                        },
+                        "resources": {
+                            "type": "number"
+                        },
+                        "soft_skills": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "rules": {
+                    "type": "object",
+                    "properties": {
+                        "required_skills_must_match": {
+                            "type": "boolean"
+                        },
+                        "min_experience_required": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "updated_at",
+                "status",
+                "source"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "published",
+                        "archived"
+                    ]
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "additionalProperties": false
+}
