@@ -1,0 +1,27 @@
+{
+  "name": "umurava_be",
+  "version": "2.4.5",
+  "description": "be",
+  "repository": {
+    "type": "git",
+    "url": "github.com/itbienvenu/be"
+  },
+  "license": "ISC",
+  "author": "MWIMULE Bienvenu",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "typescript": "^6.0.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.2",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.21.0"
+  }
+}
