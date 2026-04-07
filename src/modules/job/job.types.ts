@@ -1,13 +1,13 @@
 // TypeScript types generated from the universal job JSON schema
 
 export type Location = {
-    city?: string | null;
-    country?: string | null;
+    city: string;
+    country: string;
 };
 
 export type Company = {
-    name?: string | null;
-    location?: Location;
+    name: string;
+    location: Location;
 };
 
 export type EducationRequirement = {
@@ -28,7 +28,7 @@ export type Skill = {
     level?: "basic" | "intermediate" | "advanced" | null;
 };
 
-export type Tool = {
+export type Resource = {
     name: string;
     required?: boolean;
 };
@@ -49,27 +49,29 @@ export type ScoringRules = {
 };
 
 export type ScoringConfig = {
-    weights?: {
-        skills?: number | null;
-        experience?: number | null;
-        education?: number | null;
-        tools?: number | null;
-        soft_skills?: number | null;
+    weights: {
+        skills: number;
+        experience: number;
+        education: number;
+        resources: number;
+        soft_skills: number;
     };
-    rules?: ScoringRules;
+    rules: ScoringRules;
 };
 
+export type JobStatus = "draft" | "published" | "archived";
+
 export type JobMetadata = {
-    created_at?: string | null;
-    updated_at?: string | null;
-    status?: string | null;
-    source?: string | null;
+    created_at: string;
+    updated_at: string;
+    status: JobStatus;
+    source: string;
 };
 
 export type JobJSON = {
     _id: string;
-    title?: string | null;
-    company?: Company;
+    title: string;
+    company: Company;
     employment_type?: string | null;
     seniority_level?: string | null;
     description: {
@@ -81,10 +83,10 @@ export type JobJSON = {
         education?: EducationRequirement[];
     };
     skills?: Skill[];
-    tools?: Tool[];
-    domain?: Domain;
+    resources?: Resource[];
+    domain: Domain;
     responsibilities?: string[];
     soft_skills?: SoftSkill[];
-    scoring_config?: ScoringConfig;
-    metadata?: JobMetadata;
+    scoring_config: ScoringConfig;
+    metadata: JobMetadata;
 };
