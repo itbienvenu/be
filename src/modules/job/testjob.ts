@@ -1,7 +1,7 @@
-import JobAIService from "@/utils/ai.js";
 import "dotenv/config";
+import JobAIService from "@/modules/ai/ai.service.js";
 
-
+// Example raw job description (can be from any domain)
 const rawJobDescription = `
 We are looking for a Senior Agro Consultant to help farmers implement sustainable practices. 
 The candidate should have at least 5 years of experience in agriculture management and crop optimization.

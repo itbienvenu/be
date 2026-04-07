@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { Ajv } from "ajv";
 // @ts-ignore
 import addFormats from "ajv-formats";
-import type { JobJSON } from "@/utils/type.js"; // import your TS types here
-import jobJsonSchema from "@/json-schemas/job/job.schema.json" with { type: "json" }; // JSON Schema file
-const jobPrompt = readFileSync(new URL("../prompts/job.prompt.txt", import.meta.url), "utf-8");
+import type { JobJSON } from "@/modules/job/job.types.js"; // import your TS types here
+import jobJsonSchema from "@/modules/job/job.schema.json" with { type: "json" }; // JSON Schema file
+const jobPrompt = readFileSync(new URL("./prompts/job.prompt.txt", import.meta.url), "utf-8");
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");

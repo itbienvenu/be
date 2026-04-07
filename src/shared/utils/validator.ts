@@ -5,8 +5,8 @@ const ajv = new Ajv({ allErrors: true, strict: false });
 // @ts-expect-error
 addFormats(ajv);
 
-import jobSchema from "./job/job.schema.json" with { type: "json" };
-import jobExample from "./job/job.json" with { type: "json" };
+import jobSchema from "@/modules/job/job.schema.json" with { type: "json" };
+import jobExample from "@/modules/job/job.json" with { type: "json" };
 
 const validate = ajv.compile(jobSchema);
 
