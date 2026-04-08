@@ -12,3 +12,7 @@
 
 
 curl.txt
+
+.DS_Store
+
+logs/
