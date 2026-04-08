@@ -5,7 +5,7 @@ import type { ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
 import type { FormatsPlugin } from "ajv-formats";
 import type { JobJSON } from "@/modules/job/job.types.js"; // import your TS types here
-import jobJsonSchema from "@/modules/job/job.schema.json" with { type: "json" }; // JSON Schema file
+const jobJsonSchema = JSON.parse(readFileSync(new URL("../job/job.schema.json", import.meta.url), "utf-8"));
 const jobPrompt = readFileSync(new URL("./prompts/job.prompt.txt", import.meta.url), "utf-8");
 
 
@@ -14,6 +14,7 @@ class JobAIService {
     private ajv: Ajv;
     private readonly jobJsonValidator: ValidateFunction<JobJSON>;
     private readonly apiKey: string;
+    private readonly responseSchema: any;
 
     constructor(apiKey?: string) {
         const key = apiKey || process.env.GEMINI_API_KEY;
@@ -22,7 +23,41 @@ class JobAIService {
 
         this.ajv = new Ajv({ allErrors: true, strict: false });
         (addFormats as unknown as FormatsPlugin)(this.ajv);
-        this.jobJsonValidator = this.ajv.compile(jobJsonSchema);
+        this.jobJsonValidator = this.ajv.compile<JobJSON>(jobJsonSchema);
+        this.responseSchema = this.convertToGeminiSchema(jobJsonSchema);
+    }
+
+    private convertToGeminiSchema(schema: any): any {
+        if (!schema || typeof schema !== "object") return schema;
+
+        const geminiNode: any = {};
+
+        if (schema.type) {
+            if (Array.isArray(schema.type)) {
+                // Gemini handles nullability via a 'nullable' field
+                const nonNullType = schema.type.find((t: string) => t !== "null");
+                if (nonNullType) {
+                    geminiNode.type = nonNullType.toUpperCase();
+                    geminiNode.nullable = true;
+                }
+            } else {
+                geminiNode.type = schema.type.toUpperCase();
+            }
+        }
+
+        if (schema.enum) geminiNode.enum = schema.enum;
+        if (schema.required) geminiNode.required = schema.required;
+        if (schema.properties) {
+            geminiNode.properties = Object.fromEntries(
+                Object.entries(schema.properties).map(([k, v]) => [k, this.convertToGeminiSchema(v)])
+            );
+        }
+        if (schema.items) {
+            geminiNode.items = this.convertToGeminiSchema(schema.items);
+        }
+        if (schema.format) geminiNode.format = schema.format;
+
+        return geminiNode;
     }
 
     private extractJSON(text: string): string {
@@ -43,8 +78,6 @@ class JobAIService {
     private generatePrompt(rawJobDescription: string): string {
         return `
 ${jobPrompt}
-${JSON.stringify(jobJsonSchema)}
-
 Raw job description:
 """
 ${rawJobDescription}
@@ -71,7 +104,8 @@ ${rawJobDescription}
                         topP: 0.1,
                         topK: 40,
                         maxOutputTokens: 8192,
-                        responseMimeType: "application/json"
+                        responseMimeType: "application/json",
+                        responseSchema: this.responseSchema
                     },
                 }),
                 signal: AbortSignal.timeout(20000),

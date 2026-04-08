@@ -16,10 +16,10 @@ export class JobController {
     async createJob(req: Request, res: Response) {
         try {
             const { description } = req.body;
-            if (!description) {
+            if (typeof description !== "string" || !description.trim()) {
                 return res.status(400).json({ error: "Job description is required" });
             }
-            const structuredJob = await this.jobAIService.generateStructuredJob(req.body.description);
+            const structuredJob = await this.jobAIService.generateStructuredJob(description.trim());
 
             if (!structuredJob) {
                 return res.status(400).json({ error: "Failed to parse job description" });

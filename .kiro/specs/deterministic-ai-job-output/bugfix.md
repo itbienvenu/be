@@ -2,17 +2,17 @@
 
 ## Introduction
 
-The AI job structuring service (`JobAIService.generateStructuredJob`) calls the Gemini API without a `generationConfig`, meaning temperature defaults to a non-zero value and the response format is unconstrained text. As a result, the same raw job description input produces structurally and semantically different JSON outputs across runs. This non-determinism is critical because the output feeds directly into candidate scoring and matching — inconsistent structure or field values corrupt scoring results and make the system unreliable in production.
+The AI job structuring service (`JobAIService.generateStructuredJob`) calls the Gemini API with a `generationConfig` that includes `temperature: 0` and `responseMimeType: "application/json"`, but it lacks a specified `responseSchema`. This means the model follows the prompt's JSON instructions but the output structure isn't strictly enforced at the API level. Furthermore, the system still uses a fragile regex-based extraction (`extractJSON`) instead of parsing the response directly. These factors contribute to occasional structural variations and make the pipeline less robust than it should be.
 
 ## Bug Analysis
 
 ### Current Behavior (Defect)
 
-1.1 WHEN the same raw job description is submitted to `generateStructuredJob` on multiple runs THEN the system returns JSON objects with differing field values (e.g., different skill weights, different seniority levels, different summaries) across those runs.
+1.1 WHEN the same raw job description is submitted to `generateStructuredJob` THEN the system may still occasionally return JSON objects with differing field values or slight structural inconsistencies due to lack of strict schema enforcement at the API level.
 
-1.2 WHEN the Gemini API is called without a `generationConfig` THEN the system sends a request body containing only `contents` with no temperature or response format constraints, allowing the model to produce free-form, variable text output.
+1.2 WHEN the Gemini API is called with a `generationConfig` that lacks `responseSchema` THEN the system relies entirely on the model's internal instruction-following, which can fail to produce perfectly valid JSON matching the schema on every run.
 
-1.3 WHEN the API returns a free-form text response THEN the system attempts to extract JSON via regex fallback (`extractJSON`), which is fragile and may silently parse partial or malformed JSON without error.
+1.3 WHEN the API returns a response THEN the system uses the regex-based `extractJSON` fallback to sanitize the output, which is fragile and can lead to silent failures or malformed data being passed to validation.
 
 ### Expected Behavior (Correct)
 

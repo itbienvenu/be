@@ -16,36 +16,37 @@ export type EducationRequirement = {
 };
 
 export type ExperienceRequirement = {
-    min_years?: number | null;
+    min_years?: number;
     max_years?: number | null;
+    roles?: string[];
 };
 
 export type Skill = {
     name: string;
-    category?: string | null;
-    required?: boolean;
-    weight?: number | null;
-    level?: "basic" | "intermediate" | "advanced" | null;
+    category: string;
+    required: boolean;
+    weight: number;
+    level: string;
 };
 
 export type Resource = {
     name: string;
-    required?: boolean;
+    required: boolean;
 };
 
 export type Domain = {
-    primary?: string | null;
+    primary: string;
     secondary?: string[];
 };
 
 export type SoftSkill = {
     name: string;
-    weight?: number | null;
+    weight?: number;
 };
 
 export type ScoringRules = {
-    required_skills_must_match?: boolean;
-    min_experience_required?: boolean;
+    required_skills_must_match: boolean;
+    min_experience_required: boolean;
 };
 
 export type ScoringConfig = {
@@ -61,6 +62,10 @@ export type ScoringConfig = {
 
 export type JobStatus = "draft" | "published" | "archived";
 
+export type EmploymentType = "full_time" | "part_time" | "contract" | "temporary" | "internship";
+
+export type SeniorityLevel = "junior" | "mid" | "senior" | "lead" | "manager" | "director";
+
 export type JobMetadata = {
     created_at: string;
     updated_at: string;
@@ -69,24 +74,32 @@ export type JobMetadata = {
 };
 
 export type JobJSON = {
-    _id: string;
+    _id?: string;
     title: string;
     company: Company;
-    employment_type?: string | null;
-    seniority_level?: string | null;
+    employment_type?: EmploymentType;
+    seniority_level?: SeniorityLevel;
     description: {
         raw: string;
-        summary?: string | null;
+        summary?: string;
     };
     requirements?: {
         experience?: ExperienceRequirement;
         education?: EducationRequirement[];
+        certifications?: string[];
     };
     skills?: Skill[];
     resources?: Resource[];
     domain: Domain;
     responsibilities?: string[];
     soft_skills?: SoftSkill[];
+    physical_requirements?: {
+        lifting_kg?: number;
+        standing_hours?: number;
+    };
+    languages?: string[];
+    work_conditions?: string[];
+    travel_required?: boolean | null;
     scoring_config: ScoringConfig;
     metadata: JobMetadata;
 };

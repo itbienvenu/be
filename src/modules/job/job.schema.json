@@ -3,7 +3,6 @@
     "title": "Flexible Universal Job Schema",
     "type": "object",
     "required": [
-        "_id",
         "title",
         "company",
         "description",
@@ -52,7 +51,8 @@
                 "part_time",
                 "contract",
                 "temporary",
-                "internship"
+                "internship",
+                "seasonal"
             ]
         },
         "seniority_level": {
@@ -155,7 +155,9 @@
                             "type": "boolean"
                         },
                         "weight": {
-                            "type": "number"
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
                         },
                         "level": {
                             "type": "string"
@@ -213,9 +215,11 @@
                     "name": {
                         "type": "string"
                     },
-                    "weight": {
-                        "type": "number"
-                    }
+                        "weight": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
                 }
             }
         },
@@ -267,19 +271,29 @@
                     "additionalProperties": false,
                     "properties": {
                         "skills": {
-                            "type": "number"
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
                         },
                         "experience": {
-                            "type": "number"
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
                         },
                         "education": {
-                            "type": "number"
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
                         },
                         "resources": {
-                            "type": "number"
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
                         },
                         "soft_skills": {
-                            "type": "number"
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
                         }
                     }
                 },
