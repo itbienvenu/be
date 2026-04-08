@@ -1,4 +1,4 @@
-import JobAIService from "../src/modules/ai/ai.service.js";
+import {JobAIService} from "../src/modules/ai/ai.service.js";
 import "dotenv/config";
 
 

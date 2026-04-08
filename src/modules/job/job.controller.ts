@@ -1,5 +1,5 @@
 import { JobService } from "./job.service.js";
-import JobAIService from "../ai/ai.service.js";
+import { JobAIService } from "../ai/ai.service.js";
 import { type Request, type Response } from "express";
 
 

@@ -1,0 +1,215 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+        "contact_info",
+        "parsed_data"
+    ],
+    "properties": {
+        "domain": {
+            "type": "string",
+            "description": "Detected domain (e.g. technology, healthcare, finance)"
+        },
+        "summary": {
+            "type": "string",
+            "maxLength": 1000
+        },
+        "contact_info": {
+            "type": "object",
+            "required": [
+                "name",
+                "email"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 2
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "object",
+                    "properties": {
+                        "city": {
+                            "type": "string"
+                        },
+                        "state": {
+                            "type": "string"
+                        },
+                        "country": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "parsed_data": {
+            "type": "object",
+            "required": [
+                "skills"
+            ],
+            "properties": {
+                "education": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "level",
+                            "institution"
+                        ],
+                        "properties": {
+                            "level": {
+                                "type": "string",
+                                "enum": [
+                                    "high_school",
+                                    "diploma",
+                                    "bachelor",
+                                    "master",
+                                    "phd",
+                                    "other"
+                                ]
+                            },
+                            "field": {
+                                "type": "string"
+                            },
+                            "institution": {
+                                "type": "string"
+                            },
+                            "start_year": {
+                                "type": "number"
+                            },
+                            "end_year": {
+                                "type": "number"
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "completed",
+                                    "ongoing"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "experience": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "title",
+                            "organization"
+                        ],
+                        "properties": {
+                            "title": {
+                                "type": "string"
+                            },
+                            "organization": {
+                                "type": "string"
+                            },
+                            "start_year": {
+                                "type": "number"
+                            },
+                            "end_year": {
+                                "type": "number"
+                            },
+                            "duration_years": {
+                                "type": "number"
+                            },
+                            "responsibilities": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "skills": {
+                    "type": "array",
+                    "minItems": 0,
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "category": {
+                                "type": "string"
+                            },
+                            "level": {
+                                "type": "string",
+                                "enum": [
+                                    "beginner",
+                                    "intermediate",
+                                    "advanced",
+                                    "expert"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "attributes": {
+                    "type": "object",
+                    "description": "Flexible domain-specific data",
+                    "properties": {
+                        "certifications": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "issuer": {
+                                        "type": "string"
+                                    },
+                                    "year": {
+                                        "type": "number"
+                                    }
+                                }
+                            }
+                        },
+                        "projects": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "technologies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "link": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "additionalProperties": true
+                }
+            }
+        }
+    }
+}
