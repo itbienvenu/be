@@ -26,7 +26,6 @@ class JobAIService {
     }
 
     private extractJSON(text: string): string {
-        // Try to find the content inside a JSON code block (permissive to optional 'json' tag)
         const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
         if (match && match[1]) return match[1].trim();
 
@@ -75,7 +74,7 @@ ${rawJobDescription}
                         responseMimeType: "application/json"
                     },
                 }),
-                signal: AbortSignal.timeout(20000), // 20-second timeout
+                signal: AbortSignal.timeout(20000),
             });
 
             const data: any = await response.json();
@@ -96,7 +95,7 @@ ${rawJobDescription}
             try {
                 parsed = JSON.parse(cleanedText);
             } catch (jsonErr: any) {
-                console.error("❌ JSON Parse Error:", jsonErr.message);
+                console.error("JSON Parse Error:", jsonErr.message);
                 console.error("Received text length:", cleanedText.length);
                 console.error("Text snippet (last 100 chars):", cleanedText.slice(-100));
                 return null;
@@ -105,16 +104,16 @@ ${rawJobDescription}
             // Validate against schema using cached validator
             const valid = this.jobJsonValidator(parsed);
             if (!valid) {
-                console.error("❌ Validation Errors:", JSON.stringify(this.jobJsonValidator.errors, null, 2));
+                console.error("Validation Errors:", JSON.stringify(this.jobJsonValidator.errors, null, 2));
                 return null;
             }
 
             return parsed;
         } catch (err: any) {
             if (err.name === "AbortError") {
-                console.error("❌ Error: AI service request timed out after 20 seconds.");
+                console.error("Error: AI service request timed out after 20 seconds.");
             } else {
-                console.error("❌ Error:", err.message);
+                console.error("Error:", err.message);
             }
             return null;
         }
