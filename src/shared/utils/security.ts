@@ -50,9 +50,12 @@ export class SecurityLayer {
         return jwt.decode(token) as Omit<UserJSON, "password">;
     }
 
-    async extractTokenFromHeader(header: string): Promise<string> {
-        const token = header.split(" ")[1];
-        return token!;
+    async extractTokenFromHeader(header: string): Promise<string | null> {
+        const [type, token] = header.split(" ");
+        if (type !== "Bearer" || !token) {
+            return null;
+        }
+        return token;
     }
 
     async extractTokenFromCookie(cookie: string): Promise<string> {
