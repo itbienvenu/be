@@ -1,0 +1,142 @@
+{
+    "_id": "job_001",
+    "title": "Field Agronomist",
+    "company": {
+        "name": "AgroGrow",
+        "location": {
+            "city": "Kigali",
+            "country": "Rwanda"
+        }
+    },
+    "employment_type": "full_time",
+    "seniority_level": "mid",
+    "description": {
+        "raw": "Responsible for improving crop yield and managing field operations...",
+        "summary": "Manage field operations, implement crop rotation, and advise farmers."
+    },
+    "requirements": {
+        "experience": {
+            "min_years": 2,
+            "max_years": null,
+            "roles": [
+                "field technician",
+                "agronomy assistant"
+            ]
+        },
+        "education": [
+            {
+                "level": "bachelor",
+                "fields": [
+                    "Agronomy",
+                    "Agricultural Science"
+                ]
+            },
+            {
+                "level": "master",
+                "fields": [
+                    "Agronomy",
+                    "Agricultural Science"
+                ]
+            }
+        ],
+        "certifications": [
+            "Pesticide Handling Certificate",
+            "Irrigation Training"
+        ]
+    },
+    "skills": [
+        {
+            "name": "Crop Management",
+            "category": "domain_skill",
+            "required": true,
+            "weight": 0.3,
+            "level": "advanced"
+        },
+        {
+            "name": "Irrigation Techniques",
+            "category": "technical_skill",
+            "required": true,
+            "weight": 0.2,
+            "level": "intermediate"
+        },
+        {
+            "name": "Team Coordination",
+            "category": "soft_skill",
+            "required": true,
+            "weight": 0.1,
+            "level": "intermediate"
+        }
+    ],
+    "resources": [
+        {
+            "name": "Tractor",
+            "required": true
+        },
+        {
+            "name": "Fertilizers",
+            "required": true
+        },
+        {
+            "name": "Field Sensor Equipment",
+            "required": false
+        }
+    ],
+    "domain": {
+        "primary": "agriculture",
+        "secondary": [
+            "crop_production",
+            "irrigation"
+        ]
+    },
+    "responsibilities": [
+        "Manage field operations",
+        "Advise farmers on crop rotation",
+        "Monitor irrigation systems"
+    ],
+    "soft_skills": [
+        {
+            "name": "communication",
+            "weight": 0.05
+        },
+        {
+            "name": "problem_solving",
+            "weight": 0.05
+        },
+        {
+            "name": "teamwork",
+            "weight": 0.05
+        }
+    ],
+    "physical_requirements": {
+        "lifting_kg": 20,
+        "standing_hours": 6
+    },
+    "languages": [
+        "English",
+        "Kinyarwanda"
+    ],
+    "work_conditions": [
+        "field",
+        "office"
+    ],
+    "travel_required": true,
+    "scoring_config": {
+        "weights": {
+            "skills": 0.5,
+            "experience": 0.25,
+            "education": 0.1,
+            "resources": 0.05,
+            "soft_skills": 0.1
+        },
+        "rules": {
+            "required_skills_must_match": true,
+            "min_experience_required": true
+        }
+    },
+    "metadata": {
+        "created_at": "2026-04-07T10:00:00Z",
+        "updated_at": "2026-04-07T10:00:00Z",
+        "status": "published",
+        "source": "ai_structured"
+    }
+}
