@@ -18,9 +18,9 @@ export class ApplicantService {
     }
 
     /**
-     * Upload CV and extract data to create/update applicant profile
+     * Step 1: Upload CV and extract data (Returns data for user review)
      */
-    async uploadAndProcessCV(userId: string, fileBuffer: Buffer): Promise<ApplicantJSON | null> {
+    async uploadAndProcessCV(userId: string, fileBuffer: Buffer): Promise<{ profile: ApplicantProfileJSON; cvUrl: string; cvPublicId: string } | null> {
         try {
             // 1. Upload CV to Cloudinary
             const uploadResult = await this.cloudinary.uploadFile(fileBuffer, "applicant_cvs");
@@ -35,24 +35,27 @@ export class ApplicantService {
                 throw new Error("Failed to extract structured data from CV");
             }
 
-            // 4. Save to database
-            const applicantData: Omit<ApplicantJSON, "_id" | "userId"> = {
+            // Return the data to the frontend for review
+            return {
+                profile: parsedProfile,
                 cvUrl: uploadResult.url,
-                cvPublicId: uploadResult.public_id,
-                profile: parsedProfile
+                cvPublicId: uploadResult.public_id
             };
-
-            const success = await this.applicantRepo.upsertByUserId(userId, applicantData);
-
-            if (success) {
-                return await this.applicantRepo.findByUserId(userId);
-            }
-
-            return null;
         } catch (error: any) {
             console.error("ApplicantService Error:", error.message);
             throw error;
         }
+    }
+
+    /**
+     * Step 2: Finalize and save the applicant profile (After user review)
+     */
+    async updateProfile(userId: string, data: Omit<ApplicantJSON, "_id" | "userId">): Promise<ApplicantJSON | null> {
+        const success = await this.applicantRepo.upsertByUserId(userId, data);
+        if (success) {
+            return await this.applicantRepo.findByUserId(userId);
+        }
+        return null;
     }
 
     /**

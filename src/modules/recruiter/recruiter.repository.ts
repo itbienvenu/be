@@ -1,20 +1,20 @@
 import { getDb } from "@/config/database.js";
 import { ObjectId } from "mongodb";
-import type { ApplicantJSON } from "./applicant.types.js";
+import type { RecruiterJSON } from "./recruiter.types.js";
 
-export class ApplicantRepository {
-    private readonly collection = "applicants";
+export class RecruiterRepository {
+    private readonly collection = "recruiters";
 
     /**
-     * Create or update an applicant profile by userId
+     * Create or update a recruiter profile
      */
-    async upsertByUserId(userId: string, data: Omit<ApplicantJSON, "_id" | "userId">): Promise<boolean> {
+    async upsertByUserId(userId: string, profile: any): Promise<boolean> {
         const db = await getDb();
         const result = await db.collection(this.collection).updateOne(
             { userId: new ObjectId(userId) },
             {
                 $set: {
-                    ...data,
+                    profile,
                     updatedAt: new Date()
                 },
                 $setOnInsert: {
@@ -28,7 +28,7 @@ export class ApplicantRepository {
     }
 
     /**
-     * Find applicant profile by userId with basic user info joined
+     * Find recruiter by userId with basic user info joined
      */
     async findByUserId(userId: string): Promise<any | null> {
         const db = await getDb();
@@ -54,13 +54,13 @@ export class ApplicantRepository {
     }
 
     /**
-     * Delete applicant profile by userId
+     * Find recruiter by company name (optional helper)
      */
-    async deleteByUserId(userId: string): Promise<boolean> {
+    async findByCompanyName(companyName: string): Promise<RecruiterJSON | null> {
         const db = await getDb();
-        const result = await db.collection(this.collection).deleteOne({ 
-            userId: new ObjectId(userId) 
+        const result = await db.collection(this.collection).findOne({ 
+            "profile.company_name": companyName 
         });
-        return result.deletedCount > 0;
+        return result as RecruiterJSON | null;
     }
 }

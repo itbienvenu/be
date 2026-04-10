@@ -28,12 +28,19 @@ export class ApplicantRoutes {
     }
 
     private initializeRoutes() {
-        // Upload CV and parse it
+        // Step 1: Upload CV and get extracted JSON for review
         this.router.post(
             "/upload-cv",
             authMiddleware,
             upload.single("cv"),
             (req, res) => this.applicantController.uploadCV(req, res)
+        );
+
+        // Step 2: Save the reviewed JSON profile
+        this.router.post(
+            "/save-profile",
+            authMiddleware,
+            (req, res) => this.applicantController.saveProfile(req, res)
         );
 
         // Get personal applicant profile
