@@ -5,24 +5,146 @@ import { type JobJSON } from "./job.types.js";
 export class JobRepository {
     async createJob(data: JobJSON) {
         const db = await getDb();
-        const { _id, ...rest } = data;
-        const payload = (_id && ObjectId.isValid(_id))
-            ? { ...rest, _id: new ObjectId(_id) }
-            : rest;
+        const { _id, recruiterId, ...rest } = data;
+        
+        let payload: any = { 
+            ...rest,
+            recruiterId: new ObjectId(recruiterId),
+            createdAt: new Date() 
+        };
+
+        if (_id && ObjectId.isValid(_id)) {
+            payload._id = new ObjectId(_id);
+        }
 
         const job = await db.collection("jobs").insertOne(payload);
         return { success: true, data: job };
     }
 
-    async getAllJobs() {
+    async getAllJobs(isPublic: boolean = true) {
         const db = await getDb();
-        const jobs = await db.collection("jobs").find().toArray();
+        const pipeline: any[] = [
+            {
+                $lookup: {
+                    from: "recruiters",
+                    localField: "recruiterId",
+                    foreignField: "userId",
+                    as: "recruiter_profile"
+                }
+            },
+            { $unwind: { path: "$recruiter_profile", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "recruiterId",
+                    foreignField: "_id",
+                    as: "user_details"
+                }
+            },
+            { $unwind: { path: "$user_details", preserveNullAndEmptyArrays: true } }
+        ];
+
+        // Zero Trust / Privacy: Omit sensitive weights and scoring config for public view
+        const projection: any = {
+            "user_details.password": 0,
+            "user_details.role": 0
+        };
+
+        if (isPublic) {
+            projection.scoring_config = 0;
+            projection["skills.weight"] = 0;
+            projection["soft_skills.weight"] = 0;
+        }
+
+        pipeline.push({ $project: projection });
+
+        const jobs = await db.collection("jobs").aggregate(pipeline).toArray();
         return { success: true, data: jobs };
     }
 
-    async getJobById(id: string) {
+    async getJobById(id: string, isPublic: boolean = true, recruiterId?: string) {
         const db = await getDb();
-        const job = await db.collection("jobs").findOne({ _id: new ObjectId(id) });
-        return { success: true, data: job };
+        
+        // Safety check: ensure id is a valid ObjectId
+        if (!ObjectId.isValid(id)) {
+            return { success: true, data: null };
+        }
+
+        const match: any = { _id: new ObjectId(id) };
+        
+        // Zero Trust: If for recruiter view, ensure they own the job
+        if (!isPublic && recruiterId) {
+            match.recruiterId = new ObjectId(recruiterId);
+        }
+
+        const pipeline: any[] = [
+            { $match: match },
+            {
+                $lookup: {
+                    from: "recruiters",
+                    localField: "recruiterId",
+                    foreignField: "userId",
+                    as: "recruiter_profile"
+                }
+            },
+            { $unwind: { path: "$recruiter_profile", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "recruiterId",
+                    foreignField: "_id",
+                    as: "user_details"
+                }
+            },
+            { $unwind: { path: "$user_details", preserveNullAndEmptyArrays: true } }
+        ];
+
+        const projection: any = {
+            "user_details.password": 0,
+            "user_details.role": 0
+        };
+
+        if (isPublic) {
+            projection.scoring_config = 0;
+            projection["skills.weight"] = 0;
+            projection["soft_skills.weight"] = 0;
+        }
+
+        pipeline.push({ $project: projection });
+
+        const jobs = await db.collection("jobs").aggregate(pipeline).toArray();
+        return { success: true, data: jobs.length > 0 ? jobs[0] : null };
+    }
+
+    async getJobsByRecruiter(recruiterId: string) {
+        const db = await getDb();
+        const jobs = await db.collection("jobs").aggregate([
+            { $match: { recruiterId: new ObjectId(recruiterId) } },
+            {
+                $lookup: {
+                    from: "recruiters",
+                    localField: "recruiterId",
+                    foreignField: "userId",
+                    as: "recruiter_profile"
+                }
+            },
+            { $unwind: { path: "$recruiter_profile", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "recruiterId",
+                    foreignField: "_id",
+                    as: "user_details"
+                }
+            },
+            { $unwind: { path: "$user_details", preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    "user_details.password": 0,
+                    "user_details.role": 0
+                }
+            }
+        ]).toArray();
+        return { success: true, data: jobs };
     }
 }

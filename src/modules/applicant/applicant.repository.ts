@@ -58,8 +58,8 @@ export class ApplicantRepository {
      */
     async deleteByUserId(userId: string): Promise<boolean> {
         const db = await getDb();
-        const result = await db.collection(this.collection).deleteOne({ 
-            userId: new ObjectId(userId) 
+        const result = await db.collection(this.collection).deleteOne({
+            userId: new ObjectId(userId)
         });
         return result.deletedCount > 0;
     }
