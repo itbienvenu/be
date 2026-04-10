@@ -134,55 +134,55 @@
         },
         "skills": {
             "type": "array",
-                "items": {
-                    "type": "object",
-                    "required": [
-                        "name",
-                        "category",
-                        "required",
-                        "weight",
-                        "level"
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "category": {
-                            "type": "string"
-                        },
-                        "required": {
-                            "type": "boolean"
-                        },
-                        "weight": {
-                            "type": "number",
-                            "minimum": 0,
-                            "maximum": 1
-                        },
-                        "level": {
-                            "type": "string"
-                        }
+            "items": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "category",
+                    "required",
+                    "weight",
+                    "level"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "required": {
+                        "type": "boolean"
+                    },
+                    "weight": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "level": {
+                        "type": "string"
                     }
                 }
+            }
         },
         "resources": {
             "type": "array",
-                "items": {
-                    "type": "object",
-                    "required": [
-                        "name",
-                        "required"
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "required": {
-                            "type": "boolean"
-                        }
+            "items": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "required"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "required": {
+                        "type": "boolean"
                     }
                 }
+            }
         },
         "domain": {
             "type": "object",
@@ -215,11 +215,11 @@
                     "name": {
                         "type": "string"
                     },
-                        "weight": {
-                            "type": "number",
-                            "minimum": 0,
-                            "maximum": 1
-                        }
+                    "weight": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
                 }
             }
         },

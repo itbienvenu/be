@@ -1,4 +1,4 @@
-// import JobAIService from "@/modules/ai/ai.service.js";
+import {JobAIService} from "../src/modules/ai/ai.service.js";
 import "dotenv/config";
 
 
@@ -39,16 +39,16 @@ Your profile
 `;
 
 async function test() {
-//     const aiService = new JobAIService();
-//     const structuredJob = await aiService.generateStructuredJob(rawJobDescription);
+    const aiService = new JobAIService();
+    const structuredJob = await aiService.generateStructuredJob(rawJobDescription);
 
-//     if (structuredJob) {
-//         console.log("Structured Job JSON:");
-//         console.log(JSON.stringify(structuredJob, null, 2));
-//     } else {
-//         console.error("Failed to generate structured job JSON");
-//     }
-// }
+    if (structuredJob) {
+        console.log("Structured Job JSON:");
+        console.log(JSON.stringify(structuredJob, null, 2));
+    } else {
+        console.error("Failed to generate structured job JSON");
+    }
 }
+
 
 test();

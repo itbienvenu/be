@@ -1,5 +1,5 @@
 import "dotenv/config";
-import JobAIService from "./modules/ai/ai.service.js";
+import { JobAIService } from "./modules/ai/ai.service.js";
 import { readFileSync } from "node:fs";
 
 async function test() {

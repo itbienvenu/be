@@ -13,4 +13,16 @@ export class JobRepository {
         const job = await db.collection("jobs").insertOne(payload);
         return { success: true, data: job };
     }
+
+    async getAllJobs() {
+        const db = await getDb();
+        const jobs = await db.collection("jobs").find().toArray();
+        return { success: true, data: jobs };
+    }
+
+    async getJobById(id: string) {
+        const db = await getDb();
+        const job = await db.collection("jobs").findOne({ _id: new ObjectId(id) });
+        return { success: true, data: job };
+    }
 }

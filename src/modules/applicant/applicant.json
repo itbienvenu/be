@@ -1,0 +1,109 @@
+{
+    "domain": "technology",
+    "summary": "Backend developer with 3+ years experience building scalable APIs and working with distributed systems.",
+    "contact_info": {
+        "name": "Jean Claude Niyonzima",
+        "email": "jean.claude@example.com",
+        "phone": "+250788000111",
+        "location": {
+            "city": "Kigali",
+            "state": "",
+            "country": "Rwanda"
+        }
+    },
+    "parsed_data": {
+        "education": [
+            {
+                "level": "bachelor",
+                "field": "Software Engineering",
+                "institution": "University of Rwanda",
+                "start_year": 2019,
+                "end_year": 2023,
+                "status": "completed"
+            }
+        ],
+        "experience": [
+            {
+                "title": "Backend Developer",
+                "organization": "Rwanda Tech Solutions",
+                "start_year": 2023,
+                "end_year": 2025,
+                "duration_years": 2,
+                "responsibilities": [
+                    "Built REST APIs using Node.js and Express",
+                    "Designed MongoDB schemas for high-scale systems",
+                    "Integrated third-party payment systems"
+                ]
+            }
+        ],
+        "skills": [
+            {
+                "name": "Node.js",
+                "category": "technical",
+                "level": "advanced"
+            },
+            {
+                "name": "TypeScript",
+                "category": "technical",
+                "level": "advanced"
+            },
+            {
+                "name": "MongoDB",
+                "category": "technical",
+                "level": "intermediate"
+            },
+            {
+                "name": "Problem Solving",
+                "category": "soft_skill",
+                "level": "advanced"
+            }
+        ],
+        "attributes": {
+            "projects": [
+                {
+                    "name": "Job Matching Platform",
+                    "description": "Built a backend system for job-candidate matching using AI scoring",
+                    "technologies": [
+                        "Node.js",
+                        "MongoDB",
+                        "OpenAI"
+                    ],
+                    "link": "https://github.com/jean/job-matcher"
+                },
+                {
+                    "name": "E-commerce API",
+                    "description": "Designed scalable APIs for product and order management",
+                    "technologies": [
+                        "Express",
+                        "Redis",
+                        "PostgreSQL"
+                    ],
+                    "link": ""
+                }
+            ],
+            "certifications": [
+                {
+                    "name": "AWS Certified Cloud Practitioner",
+                    "issuer": "Amazon",
+                    "year": 2024
+                }
+            ],
+            "github_profile": "https://github.com/jeanclaude",
+            "preferred_stack": [
+                "Node.js",
+                "TypeScript",
+                "MongoDB"
+            ],
+            "languages": [
+                {
+                    "name": "English",
+                    "level": "professional"
+                },
+                {
+                    "name": "Kinyarwanda",
+                    "level": "native"
+                }
+            ]
+        }
+    }
+}
