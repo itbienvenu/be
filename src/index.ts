@@ -1,6 +1,7 @@
 import express from 'express';
 import JobRoutes from "./modules/job/job.routes.js";
 import AuthRoutes from "./modules/auth/auth.routes.js";
+import ApplicantRoutes from "./modules/applicant/applicant.routes.js";
 
 const app = express();
 app.use(express.json());
@@ -8,9 +9,11 @@ const port = 3001;
 
 const jobRoutes = new JobRoutes();
 const authRoutes = new AuthRoutes();
+const applicantRoutes = new ApplicantRoutes();
 
 app.use("/jobs", jobRoutes.router);
 app.use("/auth", authRoutes.router);
+app.use("/applicants", applicantRoutes.router);
 
 
 app.get('/', (req, res) => {

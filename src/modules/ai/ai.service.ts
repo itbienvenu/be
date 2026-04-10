@@ -75,7 +75,7 @@ abstract class BaseAIService<T> {
 
     protected async callAI(input: string): Promise<T | null> {
         const prompt = `${this.systemPrompt}\nInput:\n"""\n${input}\n"""`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`;
 
         try {
             const response = await fetch(url, {
