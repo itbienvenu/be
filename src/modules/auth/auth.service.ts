@@ -38,13 +38,17 @@ export class AuthService {
         }
 
         const { password: _, ...payload } = userExists;
+        
+        // Ensure _id is a string in the payload and response
+        const userId = userExists._id!.toString();
 
         return {
             success: true,
             message: "User logged in successfully",
             data: {
-                token: await this.securityLayer.generateAccessToken(payload),
+                token: await this.securityLayer.generateAccessToken({ ...payload, _id: userId } as any),
                 user: {
+                    _id: userId,
                     name: userExists.name,
                     email: userExists.email,
                     role: userExists.role

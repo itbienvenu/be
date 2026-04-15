@@ -20,7 +20,7 @@ export class ApplicantService {
     /**
      * Step 1: Upload CV and extract data (Returns data for user review)
      */
-    async uploadAndProcessCV(userId: string, fileBuffer: Buffer): Promise<{ profile: ApplicantProfileJSON; cvUrl: string; cvPublicId: string } | null> {
+    async uploadAndProcessCV(userId: string, fileBuffer: Buffer): Promise<{ profile: ApplicantProfileJSON; cvUrl: string; cvPublicId: string; cvRawText: string } | null> {
         try {
             // 1. Upload CV to Cloudinary
             const uploadResult = await this.cloudinary.uploadFile(fileBuffer, "applicant_cvs");
@@ -35,11 +35,19 @@ export class ApplicantService {
                 throw new Error("Failed to extract structured data from CV");
             }
 
-            // Return the data to the frontend for review
+            const cvData = {
+                cvUrl: uploadResult.url,
+                cvPublicId: uploadResult.public_id,
+                cvRawText: rawText,
+            };
+
+            // AUTO-SAVE: Persist CV info immediately so it's not lost if user doesn't confirm profile save
+            // We use upsertByUserId to handle both new and existing profiles
+            await this.applicantRepo.upsertByUserId(userId, cvData as any);
+
             return {
                 profile: parsedProfile,
-                cvUrl: uploadResult.url,
-                cvPublicId: uploadResult.public_id
+                ...cvData
             };
         } catch (error: any) {
             console.error("ApplicantService Error:", error.message);
@@ -63,5 +71,52 @@ export class ApplicantService {
      */
     async getProfile(userId: string): Promise<ApplicantJSON | null> {
         return this.applicantRepo.findByUserId(userId);
+    }
+    async patchProfile(userId: string, partial: any): Promise<ApplicantJSON | null> {
+        const existing = await this.applicantRepo.findByUserId(userId);
+        if (!existing) throw new Error("Profile not found");
+
+        const flatUpdate: Record<string, any> = {};
+
+        // 1. Handle top-level fields
+        if (partial.cvUrl !== undefined) flatUpdate["cvUrl"] = partial.cvUrl;
+        if (partial.cvPublicId !== undefined) flatUpdate["cvPublicId"] = partial.cvPublicId;
+        if (partial.cvRawText !== undefined) flatUpdate["cvRawText"] = partial.cvRawText;
+
+        // 2. Handle profile fields (both nested and flat)
+        const profileFields = [
+            "first_name", "last_name", "email", "headline", "bio", "location",
+            "gender", "nationality", "date_of_birth", "profile_picture",
+            "skills", "languages", "experience", "education",
+            "certifications", "projects", "availability", "social_links",
+            "preferences", "area_of_expertise"
+        ];
+
+        // If the user sent a 'profile' object, process its keys
+        if (partial.profile && typeof partial.profile === "object") {
+            for (const [key, value] of Object.entries(partial.profile)) {
+                if (value !== undefined) {
+                    flatUpdate[`profile.${key}`] = value;
+                }
+            }
+        }
+
+        // Also check if any profile fields were sent at the top level (flat)
+        // This makes the API more robust for different frontend implementations
+        for (const field of profileFields) {
+            if (partial[field] !== undefined) {
+                flatUpdate[`profile.${field}`] = partial[field];
+            }
+        }
+
+        if (Object.keys(flatUpdate).length === 0) {
+            throw new Error("No valid fields provided for update");
+        }
+
+        const success = await this.applicantRepo.patchByUserId(userId, flatUpdate);
+        if (success) {
+            return await this.applicantRepo.findByUserId(userId);
+        }
+        return null;
     }
 }

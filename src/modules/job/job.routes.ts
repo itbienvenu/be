@@ -18,15 +18,18 @@ export class JobRoutes {
         // Public route to get all jobs (omits sensitive scoring data)
         this.router.get("/", (req, res) => this.jobController.getAllJobs(req, res));
 
-        // Recruiter route to get all their posted jobs
+        // Recruiter route to get all their posted jobs (Aliases: /my-jobs, /recruiter)
         this.router.get(
             "/my-jobs",
             this.authMiddleware.requireRole("recruiter"),
             (req, res) => this.jobController.getRecruiterJobs(req, res)
         );
 
-        // Public route to get a single job by ID (omits sensitive scoring data)
-        this.router.get("/:id", (req, res) => this.jobController.getJobById(req, res));
+        this.router.get(
+            "/recruiter",
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.jobController.getRecruiterJobs(req, res)
+        );
 
         // Recruiter route to get full job details with scoring info (Zero Trust Ownership)
         this.router.get(
@@ -37,6 +40,9 @@ export class JobRoutes {
 
         // Protected route for recruiters to post jobs
         this.router.post("/", this.authMiddleware.requireRole("recruiter"), (req, res) => this.jobController.createJob(req, res));
+
+        // Public route to get a single job by ID (moved to bottom to avoid shadowing)
+        this.router.get("/:id", (req, res) => this.jobController.getJobById(req, res));
     }
 }
 

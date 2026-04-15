@@ -81,6 +81,7 @@ export interface ApplicantJSON {
     userId: string;
     cvUrl: string;
     cvPublicId: string;
+    cvRawText: string;   // extracted PDF text, used for AI screening
     profile: ApplicantProfileJSON;
     createdAt?: Date;
     updatedAt?: Date;

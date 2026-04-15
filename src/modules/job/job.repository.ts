@@ -7,6 +7,10 @@ export class JobRepository {
         const db = await getDb();
         const { _id, recruiterId, ...rest } = data;
         
+        if (!recruiterId) {
+            throw new Error("recruiterId is required to create a job");
+        }
+
         let payload: any = { 
             ...rest,
             recruiterId: new ObjectId(recruiterId),
@@ -117,6 +121,9 @@ export class JobRepository {
     }
 
     async getJobsByRecruiter(recruiterId: string) {
+        if (!recruiterId || !ObjectId.isValid(recruiterId)) {
+            return { success: true, data: [] };
+        }
         const db = await getDb();
         const jobs = await db.collection("jobs").aggregate([
             { $match: { recruiterId: new ObjectId(recruiterId) } },
