@@ -49,6 +49,13 @@ export class ApplicantRoutes {
             authMiddleware,
             (req, res) => this.applicantController.getProfile(req, res)
         );
+
+        // Partially update profile fields
+        this.router.patch(
+            "/profile",
+            authMiddleware,
+            (req, res) => this.applicantController.patchProfile(req, res)
+        );
     }
 }
 

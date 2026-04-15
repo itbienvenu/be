@@ -10,4 +10,16 @@ export class JobService {
     async createJob(data: JobJSON) {
         return await this.jobRepository.createJob(data);
     }
+
+    async getAllJobs(isPublic: boolean = true) {
+        return await this.jobRepository.getAllJobs(isPublic);
+    }
+
+    async getJobById(id: string, isPublic: boolean = true, recruiterId?: string) {
+        return await this.jobRepository.getJobById(id, isPublic, recruiterId);
+    }
+
+    async getJobsByRecruiter(recruiterId: string) {
+        return await this.jobRepository.getJobsByRecruiter(recruiterId);
+    }
 }

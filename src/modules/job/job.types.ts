@@ -75,6 +75,7 @@ export type JobMetadata = {
 
 export type JobJSON = {
     _id?: string;
+    recruiterId: string;
     title: string;
     company: Company;
     employment_type?: EmploymentType;
