@@ -72,4 +72,20 @@ export class ApplicationService {
         if (!updated) throw new Error("Application not found or status unchanged");
         return { success: true };
     }
+
+    async getById(applicationId: string, requesterId: string, requesterRole: "applicant" | "recruiter") {
+        const application = await this.appRepo.findById(applicationId);
+        if (!application) throw new Error("Application not found");
+
+        // Applicants can only view their own application
+        if (requesterRole === "applicant" && application.applicantId?.toString() !== requesterId) {
+            throw new Error("Forbidden: You do not have access to this application");
+        }
+        // Recruiters can only view applications for jobs they own
+        if (requesterRole === "recruiter") {
+            const jobResult = await this.jobRepo.getJobById(application.jobId?.toString(), false, requesterId);
+            if (!jobResult.data) throw new Error("Forbidden: You do not own the job for this application");
+        }
+        return application;
+    }
 }

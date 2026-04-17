@@ -1,10 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
-import JobRoutes from "./modules/job/job.routes.js";
-import AuthRoutes from "./modules/auth/auth.routes.js";
-import ApplicantRoutes from "./modules/applicant/applicant.routes.js";
-import RecruiterRoutes from "./modules/recruiter/recruiter.routes.js";
-import ApplicationRoutes from "./modules/application/application.routes.js";
-import ScreeningRoutes from "./modules/screening/screening.routes.js";
+import swaggerUi from "swagger-ui-express";
+import v1 from "./routes/v1.js";
+import { swaggerSpec } from "./docs/swagger.js";
 import { requestLogger } from './shared/middleware/request-logger.middleware.js';
 import logger from './shared/utils/logger.js';
 
@@ -14,24 +11,22 @@ app.use(requestLogger);
 
 const port = 3001;
 
-const jobRoutes = new JobRoutes();
-const authRoutes = new AuthRoutes();
-const applicantRoutes = new ApplicantRoutes();
-const recruiterRoutes = new RecruiterRoutes();
-const applicationRoutes = new ApplicationRoutes();
-const screeningRoutes = new ScreeningRoutes();
+app.use("/api/v1", v1);
 
-app.use("/jobs", jobRoutes.router);
-app.use("/auth", authRoutes.router);
-app.use("/applicants", applicantRoutes.router);
-app.use("/recruiters", recruiterRoutes.router);
-app.use("/applications", applicationRoutes.router);
-// Screening routes are nested under /jobs/:jobId (screen + shortlist)
-app.use("/jobs/:jobId", screeningRoutes.router);
+// Swagger UI — interactive API docs at /api/v1/docs
+app.use("/api/v1/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: "Umurava API Docs",
+    swaggerOptions: { persistAuthorization: true }
+}));
 
+// Raw OpenAPI JSON — useful for Postman import or frontend code generation
+app.get("/api/v1/docs.json", (_req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.send(swaggerSpec);
+});
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Hello from your TypeScript backend!' });
+  res.json({ message: 'Umurava Recruitment API', version: 'v1', base: '/api/v1' });
 });
 
 app.get('/health', (req, res) => {
@@ -48,6 +43,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 app.listen(port, () => {
   logger.info(`Server is running at http://localhost:${port}`);
+  logger.info(`API v1 available at http://localhost:${port}/api/v1`);
 });
 
 

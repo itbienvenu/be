@@ -50,6 +50,24 @@ export class ApplicationController {
         }
     }
 
+    /** GET /applications/:applicationId — view a single application (applicant or recruiter) */
+    async getById(req: Request, res: Response) {
+        try {
+            const userId = (req as any).user?._id;
+            const role   = (req as any).user?.role as "applicant" | "recruiter";
+            const { applicationId } = req.params;
+
+            const data = await this.service.getById(applicationId, userId, role);
+            res.status(200).json({ success: true, data });
+        } catch (error: any) {
+            logger.error("GET_APPLICATION_BY_ID_ERROR", error.message);
+            const status = error.message.includes("Forbidden") ? 403
+                : error.message.includes("not found") ? 404
+                : 500;
+            res.status(status).json({ success: false, message: error.message });
+        }
+    }
+
     /** PATCH /applications/:applicationId/status — recruiter updates status */
     async updateStatus(req: Request, res: Response) {
         try {

@@ -102,9 +102,47 @@ export class ApplicationRepository {
         ]).toArray();
     }
 
+    /** Get a single application by ID — joined with job info (used by both applicant and recruiter) */
+    async findById(applicationId: string): Promise<any | null> {
+        if (!ObjectId.isValid(applicationId)) return null;
+        const db = await getDb();
+        const results = await db.collection(this.collection).aggregate([
+            { $match: { _id: new ObjectId(applicationId) } },
+            {
+                $lookup: {
+                    from: "jobs",
+                    localField: "jobId",
+                    foreignField: "_id",
+                    as: "job"
+                }
+            },
+            { $unwind: { path: "$job", preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 1,
+                    applicantId: 1,
+                    jobId: 1,
+                    status: 1,
+                    appliedAt: 1,
+                    updatedAt: 1,
+                    coverLetter: 1,
+                    screening_result: 1,
+                    "job._id":               1,
+                    "job.title":             1,
+                    "job.seniority_level":   1,
+                    "job.employment_type":   1,
+                    "job.company":           1,
+                    "job.domain.primary":    1,
+                    "job.metadata.status":   1,
+                    "job.description.summary": 1,
+                }
+            }
+        ]).toArray();
+        return results[0] ?? null;
+    }
+
     /** Update application status */
-    async updateStatus(applicationId: string, status: ApplicationJSON["status"]): Promise<boolean> {
-        if (!ObjectId.isValid(applicationId)) return false;
+    async updateStatus(applicationId: string, status: ApplicationJSON["status"]): Promise<boolean> {        if (!ObjectId.isValid(applicationId)) return false;
         const db = await getDb();
         const result = await db.collection(this.collection).updateOne(
             { _id: new ObjectId(applicationId) },

@@ -63,6 +63,23 @@ export class AuthController {
             res.status(500).json({ success: false, message: "Internal server error" });
         }
     }
+
+    async refresh(req: Request, res: Response) {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken || typeof refreshToken !== "string") {
+                return res.status(400).json({ success: false, message: "refreshToken is required" });
+            }
+            const result = await this.authService.refresh(refreshToken);
+            if (!result.success) {
+                return res.status(401).json(result);
+            }
+            res.json(result);
+        } catch (error) {
+            logger.error("REFRESH_ERROR", error);
+            res.status(500).json({ success: false, message: "Internal server error" });
+        }
+    }
 }
 
 export default AuthController;
