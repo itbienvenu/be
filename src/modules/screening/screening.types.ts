@@ -56,6 +56,7 @@ export interface ScreeningResult {
     gaps: string[];
     recommendation: string;
     screened_at: Date;
+    ai_unavailable?: true;         // present when AI batch call failed; fallbacks were used
 }
 
 // ─── Pipeline Input / Output Types ───────────────────────────────────────────

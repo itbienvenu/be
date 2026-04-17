@@ -132,36 +132,55 @@ export class ScreeningRepository {
     // ─── Writes ───────────────────────────────────────────────────────────────
 
     /**
-     * Bulk-write screening results back to the applications collection.
+     * Persist screening results for all candidates in a single bulkWrite call.
+     *
+     * Uses ordered:false so a failure on one document does not abort the rest.
+     * Any per-document write errors are logged individually after the batch completes.
      *
      * Each application gets:
      *   - screening_result: the full ScreeningResult object
      *   - status: "shortlisted" or "rejected"
      *   - updatedAt: current UTC timestamp
-     *
-     * Individual write failures are logged and skipped — we never abort the
-     * entire batch because one document failed to update.
      */
     async saveScreeningResults(results: ApplicationUpdate[]): Promise<void> {
+        if (results.length === 0) return;
         const db = await getDb();
 
-        for (const update of results) {
-            try {
-                await db.collection("applications").updateOne(
-                    { _id: new ObjectId(update.application_id) },
-                    {
-                        $set: {
-                            screening_result: update.screening_result,
-                            status:           update.new_status,
-                            updatedAt:        new Date(),
-                        }
+        const operations = results.map(update => ({
+            updateOne: {
+                filter: { _id: new ObjectId(update.application_id) },
+                update: {
+                    $set: {
+                        screening_result: update.screening_result,
+                        status:           update.new_status,
+                        updatedAt:        new Date(),
                     }
-                );
-            } catch (err: any) {
-                // Log and continue — one failure must not abort the whole screening run
-                logger.error(`ScreeningRepository: failed to save result for application ${update.application_id}`, {
-                    error: err.message
-                });
+                }
+            }
+        }));
+
+        try {
+            const bulkResult = await db.collection("applications").bulkWrite(operations, { ordered: false });
+
+            // Log a summary so screening runs are auditable
+            logger.info(
+                `ScreeningRepository.saveScreeningResults: ` +
+                `${bulkResult.modifiedCount}/${results.length} applications updated`
+            );
+        } catch (err: any) {
+            // bulkWrite with ordered:false throws a BulkWriteError that contains
+            // a writeErrors array — log each failed document individually
+            const writeErrors: any[] = err?.writeErrors ?? [];
+            if (writeErrors.length > 0) {
+                for (const we of writeErrors) {
+                    logger.error(
+                        `ScreeningRepository: failed to save result for application at index ${we.index}`,
+                        { code: we.code, errmsg: we.errmsg }
+                    );
+                }
+            } else {
+                // Unexpected error (e.g. network failure) — log and surface it
+                logger.error(`ScreeningRepository.saveScreeningResults: unexpected error`, { error: err.message });
             }
         }
     }

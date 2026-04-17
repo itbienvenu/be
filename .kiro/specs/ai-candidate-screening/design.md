@@ -89,8 +89,11 @@ A pure class with no I/O. All methods are deterministic given the same inputs. E
 
 ```typescript
 class ScreeningScorer {
-    // Entry point — returns a fully scored candidate or a disqualified one
-    score(job: JobJSON, candidate: CandidateInput, aiResult: AICandidate | null): ScoredCandidate
+    // Entry point — returns a fully scored candidate or a disqualified one.
+    // asOf is captured once per screening run by ScreeningService and passed here
+    // so that experience calculations are frozen at the same point in time for all
+    // candidates in the batch — guaranteeing deterministic, comparable scores.
+    score(job: JobJSON, candidate: CandidateInput, aiResult: AICandidate | null, asOf: Date): ScoredCandidate
 
     // skills_score = Σ(signal.score × skill.weight) / Σ(skill.weight)
     private computeSkillsScore(skills: Skill[], signals: SkillSignal[]): number
@@ -277,12 +280,15 @@ export interface ApplicationJSON {
 
 ```
 // Sum durations across all experience entries.
-// For current roles (is_current=true or no end_date), use today as end_date.
+// For current roles (is_current=true or no end_date), use asOf as end_date.
+// asOf is captured ONCE by ScreeningService at the start of the run and passed
+// into every scorer.score() call — all candidates are evaluated against the
+// same reference timestamp, which guarantees deterministic, comparable scores.
 // Duration = (end_date - start_date) in fractional years.
 totalYears = 0
 for each entry in profile.experience:
     start = parseDate(entry.start_date)
-    end   = entry.end_date ? parseDate(entry.end_date) : today
+    end   = entry.end_date ? parseDate(entry.end_date) : asOf
     totalYears += (end - start) in years
 ```
 

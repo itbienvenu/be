@@ -43,18 +43,22 @@ export class ScreeningScorer {
      * @param job       - The job document (contains skills, weights, rules, requirements)
      * @param candidate - Condensed candidate profile assembled by ScreeningService
      * @param aiResult  - The AI-extracted signals for this candidate (may be null if AI failed)
+     * @param asOf      - The reference timestamp for experience calculation.
+     *                    Captured once per screening run so all candidates are scored
+     *                    against the same point in time — guarantees determinism.
      * @returns ScoredCandidate with final_score, dimension_breakdown, strengths, gaps, rank=null
      *          (rank is assigned later by ScreeningService after sorting all candidates)
      */
-    score(job: JobJSON, candidate: CandidateInput, aiResult: AICandidate | null): ScoredCandidate {
-        const skillSignals  = aiResult?.skill_signals      ?? [];
-        const softSignals   = aiResult?.soft_skill_signals ?? [];
-        const strengths     = aiResult?.strengths          ?? [];
-        const gaps          = aiResult?.gaps               ?? [];
-        const recommendation = aiResult?.recommendation    ?? "";
+    score(job: JobJSON, candidate: CandidateInput, aiResult: AICandidate | null, asOf: Date): ScoredCandidate {
+        const skillSignals   = aiResult?.skill_signals      ?? [];
+        const softSignals    = aiResult?.soft_skill_signals ?? [];
+        const strengths      = aiResult?.strengths          ?? [];
+        const gaps           = aiResult?.gaps               ?? [];
+        const recommendation = aiResult?.recommendation     ?? "";
 
-        // Step 1 — total years of experience (needed for both disqualification and scoring)
-        const totalYears = this.computeTotalExperienceYears(candidate.profile.experience ?? []);
+        // Step 1 — total years of experience (needed for both disqualification and scoring).
+        // asOf is passed in from the service so the result is stable across reruns.
+        const totalYears = this.computeTotalExperienceYears(candidate.profile.experience ?? [], asOf);
 
         // Step 2 — hard disqualification rules run BEFORE any arithmetic.
         // If a candidate fails a mandatory rule their final_score is forced to 0
@@ -68,7 +72,7 @@ export class ScreeningScorer {
                 strengths: [],
                 gaps: disqual.reasons,
                 recommendation: "Candidate does not meet mandatory requirements.",
-                screened_at: new Date(),
+                screened_at: asOf,
             };
             return {
                 application_id: candidate.application_id,
@@ -97,14 +101,22 @@ export class ScreeningScorer {
         // Step 4 — weighted combination → final score 0–100
         const finalScore = this.computeFinalScore(breakdown, job);
 
+        // If the AI was unavailable (null aiResult), generate deterministic fallbacks
+        // from the computed dimension_breakdown so the API contract is always satisfied.
+        const aiUnavailable = aiResult === null;
+        const finalStrengths     = aiUnavailable ? this.buildFallbackStrengths(breakdown, job)     : strengths;
+        const finalGaps          = aiUnavailable ? this.buildFallbackGaps(breakdown, job)          : gaps;
+        const finalRecommendation = aiUnavailable ? this.buildFallbackRecommendation(breakdown, job, finalScore) : recommendation;
+
         const result: ScreeningResult = {
             rank: null,   // assigned by ScreeningService after sorting
             final_score: finalScore,
             dimension_breakdown: breakdown,
-            strengths,
-            gaps,
-            recommendation,
-            screened_at: new Date(),
+            strengths:      finalStrengths,
+            gaps:           finalGaps,
+            recommendation: finalRecommendation,
+            screened_at: asOf,
+            ...(aiUnavailable && { ai_unavailable: true as const }),
         };
 
         return {
@@ -187,7 +199,7 @@ export class ScreeningScorer {
             ...education.map(e => {
                 // Normalise degree strings like "Bachelor of Science" → "bachelor"
                 const degreeKey = e.degree.toLowerCase().split(" ")[0];
-                return EDUCATION_TIERS[degreeKey] ?? 0;
+                return EDUCATION_TIERS[degreeKey as keyof typeof EDUCATION_TIERS] ?? 0;
             })
         );
 
@@ -259,17 +271,51 @@ export class ScreeningScorer {
      *         + resources×w.resources + soft_skills×w.soft_skills
      *   final_score = round(raw × 100, 2)
      *
+     * Weights are normalised at scoring time so the result is always in [0, 100]
+     * even if the job's weights don't sum to exactly 1.0. A warning is logged
+     * when normalisation is applied so misconfigured jobs are detectable.
+     *
      * Intermediate dimension scores are already rounded to 6dp.
      * The final score is rounded to 2dp and expressed on a 0–100 scale.
      */
     private computeFinalScore(breakdown: DimensionBreakdown, job: JobJSON): number {
         const w = job.scoring_config.weights;
+        const weightSum = w.skills + w.experience + w.education + w.resources + w.soft_skills;
+
+        // Normalise weights so they always sum to 1.0.
+        // If the job is correctly configured (sum ≈ 1.0) this is a no-op.
+        // If misconfigured, we self-heal and log a warning so it's detectable.
+        const epsilon = 0.0001;
+        let skills = w.skills, experience = w.experience, education = w.education,
+            resources = w.resources, soft_skills = w.soft_skills;
+
+        if (Math.abs(weightSum - 1.0) > epsilon) {
+            if (weightSum <= 0) {
+                // Degenerate case — fall back to equal weights
+                skills = experience = education = resources = soft_skills = 0.2;
+                console.warn(
+                    `[ScreeningScorer] Job scoring_config weights sum to ${weightSum} (invalid). ` +
+                    `Falling back to equal weights (0.2 each). Job: ${(job as any)._id ?? "unknown"}`
+                );
+            } else {
+                skills      = w.skills      / weightSum;
+                experience  = w.experience  / weightSum;
+                education   = w.education   / weightSum;
+                resources   = w.resources   / weightSum;
+                soft_skills = w.soft_skills / weightSum;
+                console.warn(
+                    `[ScreeningScorer] Job scoring_config weights sum to ${weightSum.toFixed(4)} (expected 1.0). ` +
+                    `Normalised automatically. Job: ${(job as any)._id ?? "unknown"}`
+                );
+            }
+        }
+
         const raw =
-            breakdown.skills      * w.skills      +
-            breakdown.experience  * w.experience  +
-            breakdown.education   * w.education   +
-            breakdown.resources   * w.resources   +
-            breakdown.soft_skills * w.soft_skills;
+            breakdown.skills      * skills      +
+            breakdown.experience  * experience  +
+            breakdown.education   * education   +
+            breakdown.resources   * resources   +
+            breakdown.soft_skills * soft_skills;
 
         return this.round(raw * 100, 2);
     }
@@ -323,24 +369,82 @@ export class ScreeningScorer {
     /**
      * Sum total years of experience across all experience entries.
      *
-     * For current roles (is_current=true or no end_date) we use today as the
-     * end date so the candidate is not penalised for still being employed.
+     * For current roles (is_current=true or no end_date) we use `asOf` as the
+     * end date — NOT new Date(). This keeps the result stable across reruns
+     * as long as the same `asOf` timestamp is used, satisfying the determinism guarantee.
      * Duration is expressed in fractional years (days / 365.25).
      */
     private computeTotalExperienceYears(
-        experience: CandidateInput["profile"]["experience"]
+        experience: CandidateInput["profile"]["experience"],
+        asOf: Date
     ): number {
-        const today = new Date();
         let totalDays = 0;
 
         for (const entry of experience) {
             const start = new Date(entry.start_date);
-            const end   = entry.is_current || !entry.end_date ? today : new Date(entry.end_date);
+            const end   = entry.is_current || !entry.end_date ? asOf : new Date(entry.end_date);
             const days  = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
             if (days > 0) totalDays += days;
         }
 
         return totalDays / 365.25;
+    }
+
+    // ─── AI Fallbacks ─────────────────────────────────────────────────────────
+
+    /**
+     * Generate deterministic strengths from dimension_breakdown when AI is unavailable.
+     * Any dimension scoring ≥ 0.7 is considered a strength.
+     */
+    private buildFallbackStrengths(breakdown: DimensionBreakdown, job: JobJSON): string[] {
+        const strengths: string[] = [];
+        if (breakdown.skills >= 0.7)
+            strengths.push(`Strong skills alignment with the ${job.title} requirements`);
+        if (breakdown.experience >= 0.7)
+            strengths.push(`Meets or exceeds the required years of experience`);
+        if (breakdown.education >= 0.7)
+            strengths.push(`Education level meets the role requirements`);
+        if (breakdown.resources >= 0.7)
+            strengths.push(`Has the required tools and resources`);
+        if (breakdown.soft_skills >= 0.7)
+            strengths.push(`Demonstrates relevant soft skills for the role`);
+        return strengths.length > 0 ? strengths : ["Profile reviewed — see dimension scores for details"];
+    }
+
+    /**
+     * Generate deterministic gaps from dimension_breakdown when AI is unavailable.
+     * Any dimension scoring < 0.5 is flagged as a gap.
+     */
+    private buildFallbackGaps(breakdown: DimensionBreakdown, job: JobJSON): string[] {
+        const gaps: string[] = [];
+        if (breakdown.skills < 0.5)
+            gaps.push(`Skills match below expectations for ${job.title}`);
+        if (breakdown.experience < 0.5)
+            gaps.push(`Experience level may not meet the minimum requirement`);
+        if (breakdown.education < 0.5)
+            gaps.push(`Education level below the role requirement`);
+        if (breakdown.resources < 0.5)
+            gaps.push(`Missing some required tools or resources`);
+        return gaps;
+    }
+
+    /**
+     * Generate a deterministic recommendation summary when AI is unavailable.
+     * Based purely on the final_score band.
+     */
+    private buildFallbackRecommendation(breakdown: DimensionBreakdown, job: JobJSON, finalScore: number): string {
+        const title = job.title;
+        if (finalScore >= 80)
+            return `This candidate is a strong match for the ${title} role based on their profile scores. ` +
+                   `Skills and experience alignment are both high. Recommended for further review.`;
+        if (finalScore >= 60)
+            return `This candidate shows a reasonable fit for the ${title} role. ` +
+                   `Some dimensions score well while others may need verification. Consider for interview.`;
+        if (finalScore >= 40)
+            return `This candidate partially meets the requirements for the ${title} role. ` +
+                   `Key gaps exist in one or more dimensions. Review carefully before proceeding.`;
+        return `This candidate does not strongly match the ${title} role based on available profile data. ` +
+               `Significant gaps were identified across multiple dimensions.`;
     }
 
     /**

@@ -73,6 +73,11 @@ export class ScreeningService {
         // 4. ONE batch call to Gemini — all candidates sent together.
         //    If the AI fails (returns null), we default all signals to 0
         //    and continue with scoring so the pipeline never fully breaks.
+        //
+        //    Capture screeningRunAt ONCE here — this timestamp is passed into the
+        //    scorer as `asOf` so experience calculations are stable across reruns.
+        //    All candidates in this run are scored against the same point in time.
+        const screeningRunAt = new Date();
         const aiResponse = await this.ai.batchScreen(job, candidates);
         if (!aiResponse) {
             logger.warn(`ScreeningService: AI batch call returned null for job ${jobId} — defaulting all signals to 0`);
@@ -82,10 +87,12 @@ export class ScreeningService {
             (aiResponse?.candidates ?? []).map(c => [c.applicant_id, c])
         );
 
-        // 5. Score each candidate deterministically
+        // 5. Score each candidate deterministically.
+        //    screeningRunAt is passed as asOf so experience years are frozen
+        //    at the moment this screening run started — not at call time.
         const scored: ScoredCandidate[] = candidates.map(candidate => {
             const aiResult = aiResultMap.get(candidate.applicant_id) ?? null;
-            return this.scorer.score(job, candidate, aiResult);
+            return this.scorer.score(job, candidate, aiResult, screeningRunAt);
         });
 
         // 6. Separate disqualified from eligible, then sort and rank

@@ -22,7 +22,8 @@ export const batchAIResponseSchema = {
                             required: ["skill_name", "score"],
                             properties: {
                                 skill_name: { type: "string" },
-                                score: { type: "number", minimum: 0, maximum: 1 }
+                                // Hard-skill scores are discrete: 0 = absent, 0.5 = partial, 1 = full match
+                                score: { type: "number", enum: [0, 0.5, 1] }
                             }
                         }
                     },
@@ -33,6 +34,7 @@ export const batchAIResponseSchema = {
                             required: ["skill_name", "score"],
                             properties: {
                                 skill_name: { type: "string" },
+                                // Soft-skill scores are continuous: evidence strength 0.0–1.0
                                 score: { type: "number", minimum: 0, maximum: 1 }
                             }
                         }

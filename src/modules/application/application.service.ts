@@ -31,10 +31,10 @@ export class ApplicationService {
             throw new Error("CV text content is missing from your profile. Please re-upload your CV to enable AI screening.");
         }
 
-        // 3. Enforce one-application-per-applicant rule across all jobs
-        const existingAny = await this.appRepo.findAnyByApplicantId(applicantUserId);
-        if (existingAny) {
-            throw new Error("You have already applied to a job. Only one application is allowed per applicant.");
+        // 3. Prevent duplicate applications for the same job
+        const existing = await this.appRepo.findByApplicantAndJob(applicantUserId, jobId);
+        if (existing) {
+            throw new Error("You have already applied to this job");
         }
 
         // 4. Create application with snapshotted cvUrl + cvRawText

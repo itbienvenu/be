@@ -6,6 +6,8 @@ export class ApplicationRepository {
     private readonly collection = "applications";
 
     async create(data: Omit<ApplicationJSON, "_id">): Promise<ApplicationJSON> {
+        if (!ObjectId.isValid(data.applicantId)) throw new Error("Invalid applicantId");
+        if (!ObjectId.isValid(data.jobId)) throw new Error("Invalid jobId");
         const db = await getDb();
         const result = await db.collection(this.collection).insertOne({
             ...data,
@@ -17,6 +19,7 @@ export class ApplicationRepository {
 
     /** Check if an applicant has any existing application (across all jobs) */
     async findAnyByApplicantId(applicantId: string): Promise<ApplicationJSON | null> {
+        if (!ObjectId.isValid(applicantId)) return null;
         const db = await getDb();
         const result = await db.collection(this.collection).findOne({
             applicantId: new ObjectId(applicantId),
@@ -26,6 +29,7 @@ export class ApplicationRepository {
 
     /** Prevent duplicate applications */
     async findByApplicantAndJob(applicantId: string, jobId: string): Promise<ApplicationJSON | null> {
+        if (!ObjectId.isValid(applicantId) || !ObjectId.isValid(jobId)) return null;
         const db = await getDb();
         const result = await db.collection(this.collection).findOne({
             applicantId: new ObjectId(applicantId),
@@ -36,6 +40,7 @@ export class ApplicationRepository {
 
     /** Get all applications submitted by an applicant — minimal follow-up view */
     async findByApplicantId(applicantId: string): Promise<any[]> {
+        if (!ObjectId.isValid(applicantId)) return [];
         const db = await getDb();
         return db.collection(this.collection).aggregate([
             { $match: { applicantId: new ObjectId(applicantId) } },
@@ -80,6 +85,7 @@ export class ApplicationRepository {
 
     /** Get all applications for a job (recruiter view) */
     async findByJobId(jobId: string): Promise<any[]> {
+        if (!ObjectId.isValid(jobId)) return [];
         const db = await getDb();
         return db.collection(this.collection).aggregate([
             { $match: { jobId: new ObjectId(jobId) } },
@@ -98,6 +104,7 @@ export class ApplicationRepository {
 
     /** Update application status */
     async updateStatus(applicationId: string, status: ApplicationJSON["status"]): Promise<boolean> {
+        if (!ObjectId.isValid(applicationId)) return false;
         const db = await getDb();
         const result = await db.collection(this.collection).updateOne(
             { _id: new ObjectId(applicationId) },
