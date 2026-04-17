@@ -30,12 +30,12 @@ const logger = winston.createLogger({
     transports: [],
 });
 
-// Always log to console with a pretty format
+const isProduction = process.env.NODE_ENV === "production";
+
 logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-        winston.format.colorize(),
-        consoleFormat
-    )
+    format: isProduction
+        ? winston.format.json()
+        : winston.format.combine(winston.format.colorize(), consoleFormat)
 }));
 
 // In non-production, also log to files

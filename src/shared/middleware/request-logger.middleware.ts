@@ -15,7 +15,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
         logger.info(`Incoming Request: ${method} ${url}`);
 
         // Log when the request finishes
-        res.on("finish", () => {
+        res.once("finish", () => {
             const duration = Date.now() - start;
             const status = res.statusCode;
             logger.info(`Completed: ${method} ${url} - Status: ${status} [${duration}ms]`);

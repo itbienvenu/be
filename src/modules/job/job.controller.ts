@@ -102,7 +102,7 @@ export class JobController {
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("PATCH_JOB_ERROR", error);
-            const status = error.message.includes("not found") || error.message.includes("own") ? 403 : 400;
+            const status = error.statusCode ?? 400;
             res.status(status).json({ success: false, message: error.message });
         }
     }
@@ -115,7 +115,7 @@ export class JobController {
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("PUBLISH_JOB_ERROR", error);
-            const status = error.message.includes("not found") || error.message.includes("own") ? 403 : 400;
+            const status = error.statusCode ?? 400;
             res.status(status).json({ success: false, message: error.message });
         }
     }
