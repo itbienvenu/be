@@ -15,6 +15,15 @@ export class ApplicationRepository {
         return { ...data, _id: result.insertedId.toString() };
     }
 
+    /** Check if an applicant has any existing application (across all jobs) */
+    async findAnyByApplicantId(applicantId: string): Promise<ApplicationJSON | null> {
+        const db = await getDb();
+        const result = await db.collection(this.collection).findOne({
+            applicantId: new ObjectId(applicantId),
+        });
+        return result as ApplicationJSON | null;
+    }
+
     /** Prevent duplicate applications */
     async findByApplicantAndJob(applicantId: string, jobId: string): Promise<ApplicationJSON | null> {
         const db = await getDb();
@@ -25,7 +34,7 @@ export class ApplicationRepository {
         return result as ApplicationJSON | null;
     }
 
-    /** Get all applications submitted by an applicant */
+    /** Get all applications submitted by an applicant — minimal follow-up view */
     async findByApplicantId(applicantId: string): Promise<any[]> {
         const db = await getDb();
         return db.collection(this.collection).aggregate([
@@ -39,7 +48,33 @@ export class ApplicationRepository {
                 }
             },
             { $unwind: { path: "$job", preserveNullAndEmptyArrays: true } },
-            { $project: { "job.scoring_config": 0, "job.skills.weight": 0, "job.soft_skills.weight": 0 } }
+            {
+                // Return only what the applicant needs to follow up:
+                // application status, when they applied, and basic job info
+                $project: {
+                    _id: 1,
+                    status: 1,
+                    appliedAt: 1,
+                    updatedAt: 1,
+                    coverLetter: 1,
+                    // Screening result — only rank and final score, not the full breakdown
+                    "screening_result.rank":        1,
+                    "screening_result.final_score": 1,
+                    "screening_result.recommendation": 1,
+                    "screening_result.screened_at": 1,
+                    // Minimal job info
+                    "job._id":                1,
+                    "job.title":              1,
+                    "job.seniority_level":    1,
+                    "job.employment_type":    1,
+                    "job.company.name":       1,
+                    "job.company.location":   1,
+                    "job.domain.primary":     1,
+                    "job.metadata.status":    1,
+                    "job.description.summary": 1,
+                }
+            },
+            { $sort: { appliedAt: -1 } }
         ]).toArray();
     }
 
