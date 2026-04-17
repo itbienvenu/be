@@ -41,6 +41,20 @@ export class JobRoutes {
         // Protected route for recruiters to post jobs
         this.router.post("/", this.authMiddleware.requireRole("recruiter"), (req, res) => this.jobController.createJob(req, res));
 
+        // Recruiter: patch (edit) a draft job
+        this.router.patch(
+            "/:id",
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.jobController.patchJob(req, res)
+        );
+
+        // Recruiter: publish a job
+        this.router.patch(
+            "/:id/publish",
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.jobController.publishJob(req, res)
+        );
+
         // Public route to get a single job by ID (moved to bottom to avoid shadowing)
         this.router.get("/:id", (req, res) => this.jobController.getJobById(req, res));
     }

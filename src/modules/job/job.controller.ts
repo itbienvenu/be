@@ -93,6 +93,32 @@ export class JobController {
             res.status(500).json({ error: "Failed to fetch your jobs" });
         }
     }
+
+    async patchJob(req: Request, res: Response) {
+        try {
+            const recruiterId = (req as any).user?._id;
+            const { id } = req.params;
+            const result = await this.jobService.patchJob(id, recruiterId, req.body);
+            res.status(200).json(result);
+        } catch (error: any) {
+            logger.error("PATCH_JOB_ERROR", error);
+            const status = error.statusCode ?? 400;
+            res.status(status).json({ success: false, message: error.message });
+        }
+    }
+
+    async publishJob(req: Request, res: Response) {
+        try {
+            const recruiterId = (req as any).user?._id;
+            const { id } = req.params;
+            const result = await this.jobService.publishJob(id, recruiterId);
+            res.status(200).json(result);
+        } catch (error: any) {
+            logger.error("PUBLISH_JOB_ERROR", error);
+            const status = error.statusCode ?? 400;
+            res.status(status).json({ success: false, message: error.message });
+        }
+    }
 }
 
 export default JobController;

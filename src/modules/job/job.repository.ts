@@ -1,6 +1,7 @@
 import { getDb } from "@/config/database.js";
 import { ObjectId } from "mongodb";
 import { type JobJSON } from "./job.types.js";
+import { NotFoundError, ForbiddenError } from "@/shared/utils/custom-errors.js";
 
 export class JobRepository {
     async createJob(data: JobJSON) {
@@ -153,5 +154,70 @@ export class JobRepository {
             }
         ]).toArray();
         return { success: true, data: jobs };
+    }
+
+    async patchJob(id: string, recruiterId: string, fields: Record<string, any>): Promise<boolean> {
+        const db = await getDb();
+        if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+        if (!ObjectId.isValid(recruiterId)) throw new Error("Invalid recruiter ID");
+
+        // Allowlist of editable fields - blocks sensitive fields like _id, recruiterId, metadata.status, scoring_config
+        const allowedFields = new Set([
+            "title",
+            "company",
+            "employment_type",
+            "seniority_level",
+            "description",
+            "requirements",
+            "skills",
+            "resources",
+            "domain",
+            "responsibilities",
+            "soft_skills",
+            "physical_requirements",
+            "languages",
+            "work_conditions",
+            "travel_required"
+        ]);
+
+        const flatUpdate: Record<string, any> = { "metadata.updated_at": new Date().toISOString() };
+        for (const [key, value] of Object.entries(fields)) {
+            if (value !== undefined && allowedFields.has(key)) {
+                flatUpdate[key] = value;
+            }
+        }
+
+        const result = await db.collection("jobs").updateOne(
+            { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId), "metadata.status": "draft" },
+            { $set: flatUpdate }
+        );
+
+        if (result.matchedCount === 0) {
+            const exists = await db.collection("jobs").countDocuments({ _id: new ObjectId(id) });
+            if (exists === 0) throw new NotFoundError("Job not found");
+            const owned = await db.collection("jobs").countDocuments({ _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId) });
+            if (owned === 0) throw new ForbiddenError("You do not own this job");
+            throw new Error("Job is not in draft state and cannot be edited");
+        }
+        return result.acknowledged;
+    }
+
+    async publishJob(id: string, recruiterId: string): Promise<boolean> {
+        const db = await getDb();
+        if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+
+        const result = await db.collection("jobs").updateOne(
+            { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId), "metadata.status": "draft" },
+            { $set: { "metadata.status": "published", "metadata.updated_at": new Date().toISOString() } }
+        );
+
+        if (result.matchedCount === 0) {
+            const exists = await db.collection("jobs").countDocuments({ _id: new ObjectId(id) });
+            if (exists === 0) throw new NotFoundError("Job not found");
+            const owned = await db.collection("jobs").countDocuments({ _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId) });
+            if (owned === 0) throw new ForbiddenError("You do not own this job");
+            throw new Error("Job is not in draft state and cannot be published");
+        }
+        return result.acknowledged;
     }
 }

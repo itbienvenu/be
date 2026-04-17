@@ -13,32 +13,40 @@ const requestIdFormat = winston.format((info) => {
     return info;
 });
 
+// Custom format for terminal - highly readable
+const consoleFormat = winston.format.printf(({ timestamp, level, message, requestId, stack }) => {
+    const reqId = requestId ? ` [Req: ${requestId}]` : "";
+    const errorStack = stack ? `\n${stack}` : "";
+    return `${timestamp} [${level.toUpperCase()}]${reqId}: ${message}${errorStack}`;
+});
 
 const logger = winston.createLogger({
     level: "info",
     format: winston.format.combine(
-        winston.format.timestamp(),
+        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         requestIdFormat(),
         winston.format.errors({ stack: true }),
-        winston.format.json()
     ),
     transports: [],
 });
 
-if (process.env.NODE_ENV === "production") {
-    logger.add(new winston.transports.Console({
-        format: winston.format.combine(
-            winston.format.timestamp(),
-            winston.format.json()
-        )
-    }));
-} else {
+const isProduction = process.env.NODE_ENV === "production";
+
+logger.add(new winston.transports.Console({
+    format: isProduction
+        ? winston.format.json()
+        : winston.format.combine(winston.format.colorize(), consoleFormat)
+}));
+
+// In non-production, also log to files
+if (process.env.NODE_ENV !== "production") {
     const combinedTransport = new DailyRotateFile({
         filename: path.join(logDir, "combined-%DATE%.log"),
         datePattern: "YYYY-MM-DD",
         zippedArchive: true,
         maxSize: "20m",
         maxFiles: "30d",
+        format: winston.format.json() // Files use JSON for structural logging
     });
 
     const errorTransport = new DailyRotateFile({
@@ -48,13 +56,11 @@ if (process.env.NODE_ENV === "production") {
         zippedArchive: true,
         maxSize: "20m",
         maxFiles: "30d",
+        format: winston.format.json()
     });
 
     logger.add(combinedTransport);
     logger.add(errorTransport);
-    logger.add(new winston.transports.Console({
-        format: winston.format.simple(),
-    }));
 }
 
 export default logger;
