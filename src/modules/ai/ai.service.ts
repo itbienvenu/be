@@ -12,7 +12,7 @@ const applicantJsonSchema = JSON.parse(readFileSync(new URL("../applicant/applic
 const jobPrompt = readFileSync(new URL("./prompts/job.prompt.txt", import.meta.url), "utf-8");
 const cvParserPrompt = readFileSync(new URL("./prompts/cv-parser.prompt.txt", import.meta.url), "utf-8");
 
-abstract class BaseAIService<T> {
+export abstract class BaseAIService<T> {
     private ajv: Ajv;
     private readonly validator: ValidateFunction<T>;
     private readonly apiKey: string;

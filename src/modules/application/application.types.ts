@@ -1,3 +1,5 @@
+import type { ScreeningResult } from "@/modules/screening/screening.types.js";
+
 export type ApplicationStatus = "pending" | "reviewed" | "shortlisted" | "rejected" | "hired";
 
 export interface ApplicationJSON {
@@ -10,4 +12,5 @@ export interface ApplicationJSON {
     status: ApplicationStatus;
     appliedAt: Date;
     updatedAt?: Date;
+    screening_result?: ScreeningResult; // populated after AI screening is triggered
 }

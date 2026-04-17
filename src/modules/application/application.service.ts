@@ -31,7 +31,7 @@ export class ApplicationService {
             throw new Error("CV text content is missing from your profile. Please re-upload your CV to enable AI screening.");
         }
 
-        // 3. Prevent duplicate applications
+        // 3. Prevent duplicate applications for the same job
         const existing = await this.appRepo.findByApplicantAndJob(applicantUserId, jobId);
         if (existing) {
             throw new Error("You have already applied to this job");

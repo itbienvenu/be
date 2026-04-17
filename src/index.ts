@@ -4,6 +4,7 @@ import AuthRoutes from "./modules/auth/auth.routes.js";
 import ApplicantRoutes from "./modules/applicant/applicant.routes.js";
 import RecruiterRoutes from "./modules/recruiter/recruiter.routes.js";
 import ApplicationRoutes from "./modules/application/application.routes.js";
+import ScreeningRoutes from "./modules/screening/screening.routes.js";
 import { requestLogger } from './shared/middleware/request-logger.middleware.js';
 import logger from './shared/utils/logger.js';
 
@@ -18,12 +19,15 @@ const authRoutes = new AuthRoutes();
 const applicantRoutes = new ApplicantRoutes();
 const recruiterRoutes = new RecruiterRoutes();
 const applicationRoutes = new ApplicationRoutes();
+const screeningRoutes = new ScreeningRoutes();
 
 app.use("/jobs", jobRoutes.router);
 app.use("/auth", authRoutes.router);
 app.use("/applicants", applicantRoutes.router);
 app.use("/recruiters", recruiterRoutes.router);
 app.use("/applications", applicationRoutes.router);
+// Screening routes are nested under /jobs/:jobId (screen + shortlist)
+app.use("/jobs/:jobId", screeningRoutes.router);
 
 
 app.get('/', (req, res) => {
