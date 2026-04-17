@@ -154,4 +154,35 @@ export class JobRepository {
         ]).toArray();
         return { success: true, data: jobs };
     }
+
+    async patchJob(id: string, recruiterId: string, fields: Record<string, any>): Promise<boolean> {
+        const db = await getDb();
+        if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+
+        const flatUpdate: Record<string, any> = { "metadata.updated_at": new Date().toISOString() };
+        for (const [key, value] of Object.entries(fields)) {
+            if (value !== undefined) flatUpdate[key] = value;
+        }
+
+        const result = await db.collection("jobs").updateOne(
+            { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId) },
+            { $set: flatUpdate }
+        );
+
+        if (result.matchedCount === 0) throw new Error("Job not found or you do not own this job");
+        return result.acknowledged;
+    }
+
+    async publishJob(id: string, recruiterId: string): Promise<boolean> {
+        const db = await getDb();
+        if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+
+        const result = await db.collection("jobs").updateOne(
+            { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId) },
+            { $set: { "metadata.status": "published", "metadata.updated_at": new Date().toISOString() } }
+        );
+
+        if (result.matchedCount === 0) throw new Error("Job not found or you do not own this job");
+        return result.acknowledged;
+    }
 }

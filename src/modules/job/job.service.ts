@@ -22,4 +22,14 @@ export class JobService {
     async getJobsByRecruiter(recruiterId: string) {
         return await this.jobRepository.getJobsByRecruiter(recruiterId);
     }
+
+    async patchJob(id: string, recruiterId: string, fields: Record<string, any>) {
+        await this.jobRepository.patchJob(id, recruiterId, fields);
+        return { success: true, message: "Job updated successfully" };
+    }
+
+    async publishJob(id: string, recruiterId: string) {
+        await this.jobRepository.publishJob(id, recruiterId);
+        return { success: true, message: "Job published successfully" };
+    }
 }
