@@ -11,6 +11,13 @@
    cp .env.example .env
    ```
 4. Configure your environment variables in `.env`.
+
+## Running the Server
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Development mode with hot-reload (`tsx watch`) |
+| `npm start` | Production / one-shot start (`tsx src/index.ts`) |
    - **IMPORTANT**: `MONGODB_TLS_ALLOW_INVALID_CERTS` is for local development only. Do NOT enable it in production unless strictly necessary for corporate proxy environments, and always ensure `ALLOW_DEVELOPMENT_CERTS=true` is set to acknowledge the risk.
 
 ## Logging
