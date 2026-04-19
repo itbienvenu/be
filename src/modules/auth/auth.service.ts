@@ -62,10 +62,18 @@ export class AuthService {
         try {
             // Verify the refresh token — throws if expired or tampered
             const payload = await this.securityLayer.verifyRefreshToken(refreshToken);
-            const { iat, exp, ...userPayload } = payload as any;
 
-            // Issue a new short-lived access token
-            const accessToken = await this.securityLayer.generateAccessToken(userPayload);
+            // Fetch fresh user data — rejects deleted/disabled accounts and ensures up-to-date role
+            const user = await this.authRepository.findById((payload as any)._id);
+            if (!user) {
+                return { success: false, message: "Invalid or expired refresh token" };
+            }
+
+            const { password: _, ...userPayload } = user;
+            const userId = user._id!.toString();
+
+            // Issue a new short-lived access token from current DB state
+            const accessToken = await this.securityLayer.generateAccessToken({ ...userPayload, _id: userId } as any);
             return {
                 success: true,
                 message: "Access token refreshed",

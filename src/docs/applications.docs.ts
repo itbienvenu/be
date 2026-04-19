@@ -94,9 +94,9 @@ export const applicationSchemas = {
                             location: { type: "object", properties: { city: { type: "string" }, country: { type: "string" } } }
                         }
                     },
-                    domain:           { type: "object", properties: { primary: { type: "string", example: "internal_tools" } } },
-                    "metadata.status":{ type: "string", example: "published" },
-                    "description.summary": { type: "string", example: "Build and maintain internal annotation tools." }
+                    domain:      { type: "object", properties: { primary: { type: "string", example: "internal_tools" } } },
+                    metadata:    { type: "object", properties: { status: { type: "string", example: "published" } } },
+                    description: { type: "object", properties: { summary: { type: "string", example: "Build and maintain internal annotation tools." } } }
                 }
             }
         }
@@ -123,7 +123,9 @@ export const applicationSchemas = {
                     seniority_level: { type: "string", example: "mid" },
                     employment_type: { type: "string", example: "full_time" },
                     company:         { type: "object" },
-                    "metadata.status": { type: "string", example: "published" }
+                    domain:          { type: "object", properties: { primary: { type: "string", example: "internal_tools" } } },
+                    metadata:        { type: "object", properties: { status: { type: "string", example: "published" } } },
+                    description:     { type: "object", properties: { summary: { type: "string", example: "Build and maintain internal annotation tools." } } }
                 }
             }
         }
@@ -257,7 +259,8 @@ export const applicationPaths = {
                 "\n\n**Access rules:**" +
                 "\n- Applicants can only view their own application" +
                 "\n- Recruiters can only view applications for jobs they own" +
-                "\n\n**Required role:** any authenticated user",
+                "\n- Any other role is rejected with HTTP 403" +
+                "\n\n**Required role:** `applicant` or `recruiter`",
             security: [{ BearerAuth: [] }],
             parameters: [
                 {
@@ -285,7 +288,24 @@ export const applicationPaths = {
                     }
                 },
                 "401": { $ref: "#/components/responses/Unauthorized" },
-                "403": { $ref: "#/components/responses/Forbidden" },
+                "403": {
+                    description: "Insufficient role, or applicant/recruiter does not own this application",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            examples: {
+                                wrongRole: {
+                                    summary: "Role not permitted",
+                                    value: { success: false, message: "Forbidden: Access restricted to applicants and recruiters" }
+                                },
+                                notOwner: {
+                                    summary: "Does not own the application",
+                                    value: { success: false, message: "Forbidden" }
+                                }
+                            }
+                        }
+                    }
+                },
                 "404": { $ref: "#/components/responses/NotFound" },
                 "500": { $ref: "#/components/responses/InternalError" }
             }

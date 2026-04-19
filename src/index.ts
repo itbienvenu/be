@@ -1,9 +1,26 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
+import "dotenv/config";
 import swaggerUi from "swagger-ui-express";
 import v1 from "./routes/v1.js";
 import { swaggerSpec } from "./docs/swagger.js";
 import { requestLogger } from './shared/middleware/request-logger.middleware.js';
 import logger from './shared/utils/logger.js';
+
+// ── Startup environment guard ─────────────────────────────────────────────────
+// Fail fast before binding the port so misconfigured deployments are obvious.
+const REQUIRED_ENV_VARS = [
+    "JWT_SECRET",
+    "REFRESH_SECRET",
+    "MONGODB_URI",
+    "GEMINI_API_KEY",
+];
+
+const missing = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
+if (missing.length > 0) {
+    console.error(`[STARTUP] Missing required environment variables: ${missing.join(", ")}`);
+    console.error("[STARTUP] Server will not start. Set the missing variables and restart.");
+    process.exit(1);
+}
 
 const app = express();
 app.use(express.json());

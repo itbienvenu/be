@@ -2,6 +2,7 @@ import { ApplicationRepository } from "./application.repository.js";
 import { ApplicantRepository } from "@/modules/applicant/applicant.repository.js";
 import { JobRepository } from "@/modules/job/job.repository.js";
 import type { ApplicationJSON } from "./application.types.js";
+import { NotFoundError, ForbiddenError, ValidationError, ConflictError } from "@/shared/utils/custom-errors.js";
 
 export class ApplicationService {
     private appRepo = new ApplicationRepository();
@@ -12,29 +13,29 @@ export class ApplicationService {
         // 1. Verify job exists and is published
         const jobResult = await this.jobRepo.getJobById(jobId, false);
         if (!jobResult.data) {
-            throw new Error("Job not found");
+            throw new NotFoundError("Job not found");
         }
         if (jobResult.data.metadata?.status !== "published") {
-            throw new Error("This job is not accepting applications");
+            throw new ValidationError("This job is not accepting applications");
         }
 
         // 2. Get applicant profile to snapshot cvUrl + cvRawText
         const applicant = await this.applicantRepo.findByUserId(applicantUserId);
         if (!applicant) {
-            throw new Error("You need to complete your profile before applying. Please upload your CV and save your profile.");
+            throw new ValidationError("You need to complete your profile before applying. Please upload your CV and save your profile.");
         }
         
         if (!applicant.cvUrl) {
-            throw new Error("No CV found on your profile. Please upload your CV in the profile section before applying.");
+            throw new ValidationError("No CV found on your profile. Please upload your CV in the profile section before applying.");
         }
         if (!applicant.cvRawText) {
-            throw new Error("CV text content is missing from your profile. Please re-upload your CV to enable AI screening.");
+            throw new ValidationError("CV text content is missing from your profile. Please re-upload your CV to enable AI screening.");
         }
 
         // 3. Prevent duplicate applications for the same job
         const existing = await this.appRepo.findByApplicantAndJob(applicantUserId, jobId);
         if (existing) {
-            throw new Error("You have already applied to this job");
+            throw new ConflictError("You have already applied to this job");
         }
 
         // 4. Create application with snapshotted cvUrl + cvRawText
@@ -62,29 +63,34 @@ export class ApplicationService {
         // Verify recruiter owns the job
         const jobResult = await this.jobRepo.getJobById(jobId, false, recruiterUserId);
         if (!jobResult.data) {
-            throw new Error("Forbidden: Job not found or you do not own this job");
+            throw new ForbiddenError("Job not found or you do not own this job");
         }
         return this.appRepo.findByJobId(jobId);
     }
 
     async updateStatus(applicationId: string, status: ApplicationJSON["status"]) {
         const updated = await this.appRepo.updateStatus(applicationId, status);
-        if (!updated) throw new Error("Application not found or status unchanged");
+        if (!updated) throw new NotFoundError("Application not found or status unchanged");
         return { success: true };
     }
 
-    async getById(applicationId: string, requesterId: string, requesterRole: "applicant" | "recruiter") {
+    async getById(applicationId: string, requesterId: string, requesterRole: string) {
+        // Only applicants and recruiters are allowed — reject any other role immediately
+        if (requesterRole !== "applicant" && requesterRole !== "recruiter") {
+            throw new ForbiddenError("Access restricted to applicants and recruiters");
+        }
+
         const application = await this.appRepo.findById(applicationId);
-        if (!application) throw new Error("Application not found");
+        if (!application) throw new NotFoundError("Application not found");
 
         // Applicants can only view their own application
         if (requesterRole === "applicant" && application.applicantId?.toString() !== requesterId) {
-            throw new Error("Forbidden: You do not have access to this application");
+            throw new ForbiddenError("You do not have access to this application");
         }
         // Recruiters can only view applications for jobs they own
         if (requesterRole === "recruiter") {
             const jobResult = await this.jobRepo.getJobById(application.jobId?.toString(), false, requesterId);
-            if (!jobResult.data) throw new Error("Forbidden: You do not own the job for this application");
+            if (!jobResult.data) throw new ForbiddenError("You do not own the job for this application");
         }
         return application;
     }

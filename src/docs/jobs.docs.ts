@@ -307,7 +307,7 @@ export const jobPaths = {
                     content: {
                         "application/json": {
                             schema: { $ref: "#/components/schemas/ErrorResponse" },
-                            example: { error: "Failed to parse job description" }
+                            example: { success: false, message: "Failed to parse job description" }
                         }
                     }
                 },
@@ -389,7 +389,7 @@ export const jobPaths = {
                     content: {
                         "application/json": {
                             schema: { $ref: "#/components/schemas/ErrorResponse" },
-                            example: { error: "Forbidden: Job not found or you do not have permission to view full details" }
+                            example: { success: false, message: "Job not found or you do not have permission to view full details" }
                         }
                     }
                 },

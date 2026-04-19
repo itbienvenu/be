@@ -66,11 +66,12 @@ export class AuthController {
 
     async refresh(req: Request, res: Response) {
         try {
-            const { refreshToken } = req.body;
-            if (!refreshToken || typeof refreshToken !== "string") {
-                return res.status(400).json({ success: false, message: "refreshToken is required" });
+            const validation = this.schemaValidator.validate(schema.definitions.refresh, req.body);
+            if (!validation.valid) {
+                logger.error("REFRESH_ERROR", validation.errors);
+                return res.status(400).json({ success: false, message: "Invalid request body", errors: validation.errors });
             }
-            const result = await this.authService.refresh(refreshToken);
+            const result = await this.authService.refresh(req.body.refreshToken);
             if (!result.success) {
                 return res.status(401).json(result);
             }

@@ -1,6 +1,6 @@
 import { getDb } from "@/config/database.js";
 import { ObjectId } from "mongodb";
-import type { ApplicationJSON } from "./application.types.js";
+import type { ApplicationJSON, ApplicationDetail, ApplicationMyView } from "./application.types.js";
 
 export class ApplicationRepository {
     private readonly collection = "applications";
@@ -39,7 +39,7 @@ export class ApplicationRepository {
     }
 
     /** Get all applications submitted by an applicant — minimal follow-up view */
-    async findByApplicantId(applicantId: string): Promise<any[]> {
+    async findByApplicantId(applicantId: string): Promise<ApplicationMyView[]> {
         if (!ObjectId.isValid(applicantId)) return [];
         const db = await getDb();
         return db.collection(this.collection).aggregate([
@@ -103,7 +103,7 @@ export class ApplicationRepository {
     }
 
     /** Get a single application by ID — joined with job info (used by both applicant and recruiter) */
-    async findById(applicationId: string): Promise<any | null> {
+    async findById(applicationId: string): Promise<ApplicationDetail | null> {
         if (!ObjectId.isValid(applicationId)) return null;
         const db = await getDb();
         const results = await db.collection(this.collection).aggregate([
@@ -138,11 +138,12 @@ export class ApplicationRepository {
                 }
             }
         ]).toArray();
-        return results[0] ?? null;
+        return (results[0] ?? null) as ApplicationDetail | null;
     }
 
     /** Update application status */
-    async updateStatus(applicationId: string, status: ApplicationJSON["status"]): Promise<boolean> {        if (!ObjectId.isValid(applicationId)) return false;
+    async updateStatus(applicationId: string, status: ApplicationJSON["status"]): Promise<boolean> {
+        if (!ObjectId.isValid(applicationId)) return false;
         const db = await getDb();
         const result = await db.collection(this.collection).updateOne(
             { _id: new ObjectId(applicationId) },

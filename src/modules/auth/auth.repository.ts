@@ -20,6 +20,13 @@ export class AuthRepository {
         return result as UserJSON | null;
     }
 
+    async findById(id: string): Promise<UserJSON | null> {
+        if (!ObjectId.isValid(id)) return null;
+        const db = await getDb();
+        const result = await db.collection("users").findOne({ _id: new ObjectId(id) });
+        return result as UserJSON | null;
+    }
+
 
     async logout(user: any) {
         const db = await getDb();

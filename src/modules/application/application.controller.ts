@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { ApplicationService } from "./application.service.js";
 import logger from "@/shared/utils/logger.js";
+import { NotFoundError, ForbiddenError, ValidationError, ConflictError } from "@/shared/utils/custom-errors.js";
 
 export class ApplicationController {
     private service = new ApplicationService();
@@ -16,11 +17,11 @@ export class ApplicationController {
             res.status(201).json({ success: true, data: application });
         } catch (error: any) {
             logger.error("APPLY_ERROR", error.message);
-            const status = error.message.includes("Forbidden") ? 403
-                : error.message.includes("already applied") ? 409
-                : error.message.includes("not found") ? 404
-                : 400;
-            res.status(status).json({ success: false, message: error.message });
+            if (error instanceof ForbiddenError) return res.status(403).json({ success: false, message: error.message });
+            if (error instanceof ConflictError)  return res.status(409).json({ success: false, message: error.message });
+            if (error instanceof NotFoundError)  return res.status(404).json({ success: false, message: error.message });
+            if (error instanceof ValidationError) return res.status(400).json({ success: false, message: error.message });
+            res.status(400).json({ success: false, message: error.message });
         }
     }
 
@@ -45,8 +46,8 @@ export class ApplicationController {
             res.status(200).json({ success: true, data });
         } catch (error: any) {
             logger.error("GET_JOB_APPLICATIONS_ERROR", error.message);
-            const status = error.message.includes("Forbidden") ? 403 : 500;
-            res.status(status).json({ success: false, message: error.message });
+            if (error instanceof ForbiddenError) return res.status(403).json({ success: false, message: error.message });
+            res.status(500).json({ success: false, message: error.message });
         }
     }
 
@@ -61,10 +62,9 @@ export class ApplicationController {
             res.status(200).json({ success: true, data });
         } catch (error: any) {
             logger.error("GET_APPLICATION_BY_ID_ERROR", error.message);
-            const status = error.message.includes("Forbidden") ? 403
-                : error.message.includes("not found") ? 404
-                : 500;
-            res.status(status).json({ success: false, message: error.message });
+            if (error instanceof ForbiddenError) return res.status(403).json({ success: false, message: error.message });
+            if (error instanceof NotFoundError)  return res.status(404).json({ success: false, message: error.message });
+            res.status(500).json({ success: false, message: error.message });
         }
     }
 
@@ -83,7 +83,8 @@ export class ApplicationController {
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("UPDATE_STATUS_ERROR", error.message);
-            res.status(404).json({ success: false, message: error.message });
+            if (error instanceof NotFoundError) return res.status(404).json({ success: false, message: error.message });
+            res.status(500).json({ success: false, message: error.message });
         }
     }
 }

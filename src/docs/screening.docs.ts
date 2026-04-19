@@ -129,7 +129,7 @@ export const screeningPaths = {
             ],
             responses: {
                 "200": {
-                    description: "Screening complete — ranked shortlist returned",
+                    description: "Screening complete — ranked shortlist returned. Returns an empty array if no eligible applications were found for this job.",
                     content: {
                         "application/json": {
                             schema: {
@@ -139,15 +139,12 @@ export const screeningPaths = {
                                     data: {
                                         type: "array",
                                         items: { $ref: "#/components/schemas/ShortlistEntry" },
-                                        description: "Candidates sorted by final_score descending. Disqualified candidates are excluded."
+                                        description: "Candidates sorted by final_score descending. Disqualified candidates are excluded. Empty array if no eligible applications exist."
                                     }
                                 }
                             }
                         }
                     }
-                },
-                "200 (no candidates)": {
-                    description: "No eligible applications found for this job"
                 },
                 "401": { $ref: "#/components/responses/Unauthorized" },
                 "403": {
