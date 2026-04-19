@@ -37,6 +37,13 @@ export class ApplicationRoutes {
             (req, res) => this.controller.updateStatus(req, res)
         );
 
+        // Applicant or Recruiter: view a single application by ID
+        this.router.get(
+            "/:applicationId",
+            roleMiddleware.authenticate,
+            (req, res) => this.controller.getById(req, res)
+        );
+
         // Applicant: submit application to a job (dynamic param last)
         this.router.post(
             "/:jobId",

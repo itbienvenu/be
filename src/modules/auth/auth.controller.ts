@@ -63,6 +63,24 @@ export class AuthController {
             res.status(500).json({ success: false, message: "Internal server error" });
         }
     }
+
+    async refresh(req: Request, res: Response) {
+        try {
+            const validation = this.schemaValidator.validate(schema.definitions.refresh, req.body);
+            if (!validation.valid) {
+                logger.error("REFRESH_ERROR", validation.errors);
+                return res.status(400).json({ success: false, message: "Invalid request body", errors: validation.errors });
+            }
+            const result = await this.authService.refresh(req.body.refreshToken);
+            if (!result.success) {
+                return res.status(401).json(result);
+            }
+            res.json(result);
+        } catch (error) {
+            logger.error("REFRESH_ERROR", error);
+            res.status(500).json({ success: false, message: "Internal server error" });
+        }
+    }
 }
 
 export default AuthController;

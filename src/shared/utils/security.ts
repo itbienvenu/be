@@ -31,19 +31,23 @@ export class SecurityLayer {
 
 
     async generateAccessToken(user: Omit<UserJSON, "password">): Promise<string> {
-        return jwt.sign(user, process.env.JWT_SECRET!, { expiresIn: "1h" });
+        if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not set");
+        return jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "1h" });
     }
 
     async generateRefreshToken(user: Omit<UserJSON, "password">): Promise<string> {
-        return jwt.sign(user, process.env.REFRESH_SECRET!, { expiresIn: "7d" });
+        if (!process.env.REFRESH_SECRET) throw new Error("REFRESH_SECRET is not set");
+        return jwt.sign(user, process.env.REFRESH_SECRET, { expiresIn: "7d" });
     }
 
     async verifyAccessToken(token: string): Promise<Omit<UserJSON, "password">> {
-        return jwt.verify(token, process.env.JWT_SECRET!) as Omit<UserJSON, "password">;
+        if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not set");
+        return jwt.verify(token, process.env.JWT_SECRET) as Omit<UserJSON, "password">;
     }
 
     async verifyRefreshToken(token: string): Promise<Omit<UserJSON, "password">> {
-        return jwt.verify(token, process.env.REFRESH_SECRET!) as Omit<UserJSON, "password">;
+        if (!process.env.REFRESH_SECRET) throw new Error("REFRESH_SECRET is not set");
+        return jwt.verify(token, process.env.REFRESH_SECRET) as Omit<UserJSON, "password">;
     }
 
     async decodeToken(token: string): Promise<Omit<UserJSON, "password">> {

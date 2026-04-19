@@ -11,6 +11,13 @@
    cp .env.example .env
    ```
 4. Configure your environment variables in `.env`.
+
+## Running the Server
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Development mode with hot-reload (`tsx watch`) |
+| `npm start` | Production / one-shot start (`tsx src/index.ts`) |
    - **IMPORTANT**: `MONGODB_TLS_ALLOW_INVALID_CERTS` is for local development only. Do NOT enable it in production unless strictly necessary for corporate proxy environments, and always ensure `ALLOW_DEVELOPMENT_CERTS=true` is set to acknowledge the risk.
 
 ## Logging
@@ -30,6 +37,69 @@ Jobs follow a strict status lifecycle: `draft → published`. The following rule
 - **`publishJob`**: Only jobs in `"draft"` state can be published. Attempting to publish a non-draft job returns a `400` error: `"Job is not in draft state and cannot be published"`.
 
 Both operations also enforce recruiter ownership — patching or publishing a job you don't own returns a `403 Forbidden`.
+
+## API Documentation
+
+Interactive Swagger UI is available at `GET /api/v1/docs` once the server is running. The raw OpenAPI JSON spec can be fetched from `GET /api/v1/docs.json` (useful for Postman import or client code generation).
+
+The base URL is driven by the `API_BASE_URL` environment variable. If unset, it defaults to `http://localhost:3001`.
+
+Module-level docs are imported explicitly in `src/docs/swagger.ts` — each module owns its own doc file (e.g. `src/docs/auth.docs.ts`) and is merged into the spec at startup.
+
+## API Routes
+
+All routes are mounted under `/api/v1`.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/auth/register` | — | Register a new user (applicant or recruiter) |
+| `POST` | `/auth/login` | — | Login and obtain JWT tokens |
+| `POST` | `/auth/refresh` | — | Refresh access token |
+| `GET` | `/jobs` | — | List all published jobs (public view, no scoring weights) |
+| `POST` | `/jobs` | recruiter | Create a job from raw description (AI-structured) |
+| `GET` | `/jobs/my-jobs` | recruiter | List own jobs (all statuses, includes scoring config) |
+| `GET` | `/jobs/recruiter/:id` | recruiter (owner) | Get full job details including scoring config |
+| `GET` | `/jobs/:id` | — | Get single job public view |
+| `PATCH` | `/jobs/:id` | recruiter (owner) | Edit a draft job |
+| `PATCH` | `/jobs/:id/publish` | recruiter (owner) | Publish a draft job |
+| `POST` | `/jobs/:jobId/screen` | recruiter (owner) | Trigger AI candidate screening |
+| `GET` | `/jobs/:jobId/shortlist` | recruiter (owner) | Retrieve ranked shortlist |
+| `POST` | `/applicants/upload-cv` | authenticated | Step 1 — Upload PDF CV; AI extracts and returns structured profile (not saved yet) |
+| `POST` | `/applicants/save-profile` | authenticated | Step 2 — Persist the reviewed profile (upsert) |
+| `GET` | `/applicants/profile` | authenticated | Get own applicant profile |
+| `PATCH` | `/applicants/profile` | authenticated | Partially update profile fields |
+| `POST/GET` | `/recruiters/profile` | recruiter | Recruiter company profile |
+| `POST` | `/applications/:jobId` | applicant | Apply to a job |
+| `GET` | `/applications/my` | applicant | List own applications |
+| `GET` | `/applications/:applicationId` | — | Get single application |
+| `GET` | `/applications/job/:jobId` | recruiter | List applications for a job |
+| `PATCH` | `/applications/:applicationId/status` | recruiter | Update application status |
+
+Screening routes are nested under `/jobs/:jobId` with `mergeParams` enabled so handlers have access to `:jobId` directly.
+
+### Applicant Profile — Two-Step CV Flow
+
+Creating an applicant profile is a two-step process:
+
+1. **`POST /applicants/upload-cv`** — Upload a PDF (max 5 MB). The file is stored on Cloudinary and its text is extracted and sent to Gemini AI, which returns a structured `ApplicantProfile` JSON. The profile is **not saved** at this point — it is returned for the applicant to review and edit.
+2. **`POST /applicants/save-profile`** — Send the (optionally edited) profile JSON to persist it. This is an upsert — calling it again replaces the existing profile.
+
+Once a profile exists, `GET /applicants/profile` retrieves it and `PATCH /applicants/profile` updates individual fields using dot-notation paths (e.g. `"profile.headline"`, `"profile.availability.status"`).
+
+---
+
+### Jobs — Zero Trust Data Model
+
+The Jobs API exposes two views of the same document:
+
+- **Public view** (`GET /jobs`, `GET /jobs/:id`): `scoring_config` and skill `weight` fields are stripped. Safe for applicants.
+- **Recruiter full view** (`GET /jobs/my-jobs`, `GET /jobs/recruiter/:id`): includes `scoring_config.weights`, `scoring_config.rules`, and per-skill weights. Requires ownership.
+
+### Job Creation Flow
+
+`POST /jobs` accepts a raw `description` string. Gemini AI parses it into a fully structured job document (skills with weights, scoring config, requirements, domain classification). The job is created in `draft` status — call `PATCH /jobs/:id/publish` to make it live.
+
+---
 
 ## AI Candidate Screening
 

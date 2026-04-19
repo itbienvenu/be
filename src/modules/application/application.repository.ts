@@ -1,6 +1,6 @@
 import { getDb } from "@/config/database.js";
 import { ObjectId } from "mongodb";
-import type { ApplicationJSON } from "./application.types.js";
+import type { ApplicationJSON, ApplicationDetail, ApplicationMyView } from "./application.types.js";
 
 export class ApplicationRepository {
     private readonly collection = "applications";
@@ -39,7 +39,7 @@ export class ApplicationRepository {
     }
 
     /** Get all applications submitted by an applicant — minimal follow-up view */
-    async findByApplicantId(applicantId: string): Promise<any[]> {
+    async findByApplicantId(applicantId: string): Promise<ApplicationMyView[]> {
         if (!ObjectId.isValid(applicantId)) return [];
         const db = await getDb();
         return db.collection(this.collection).aggregate([
@@ -100,6 +100,45 @@ export class ApplicationRepository {
             { $unwind: { path: "$applicant", preserveNullAndEmptyArrays: true } },
             { $project: { "applicant.cvPublicId": 0 } }
         ]).toArray();
+    }
+
+    /** Get a single application by ID — joined with job info (used by both applicant and recruiter) */
+    async findById(applicationId: string): Promise<ApplicationDetail | null> {
+        if (!ObjectId.isValid(applicationId)) return null;
+        const db = await getDb();
+        const results = await db.collection(this.collection).aggregate([
+            { $match: { _id: new ObjectId(applicationId) } },
+            {
+                $lookup: {
+                    from: "jobs",
+                    localField: "jobId",
+                    foreignField: "_id",
+                    as: "job"
+                }
+            },
+            { $unwind: { path: "$job", preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 1,
+                    applicantId: 1,
+                    jobId: 1,
+                    status: 1,
+                    appliedAt: 1,
+                    updatedAt: 1,
+                    coverLetter: 1,
+                    screening_result: 1,
+                    "job._id":               1,
+                    "job.title":             1,
+                    "job.seniority_level":   1,
+                    "job.employment_type":   1,
+                    "job.company":           1,
+                    "job.domain.primary":    1,
+                    "job.metadata.status":   1,
+                    "job.description.summary": 1,
+                }
+            }
+        ]).toArray();
+        return (results[0] ?? null) as ApplicationDetail | null;
     }
 
     /** Update application status */

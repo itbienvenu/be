@@ -19,8 +19,21 @@ export type LoginResponseJSON = {
     success: boolean;
     message: string;
     data: {
-        token: string;
+        accessToken: string;
+        refreshToken: string;
         user: Omit<UserJSON, "password">;
+    }
+}
+
+export type RefreshTokenRequest = {
+    refreshToken: string;
+}
+
+export type RefreshTokenResponse = {
+    success: boolean;
+    message: string;
+    data: {
+        accessToken: string;
     }
 }
 
