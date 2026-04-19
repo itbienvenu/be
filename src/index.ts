@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import "dotenv/config";
+import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import v1 from "./routes/v1.js";
 import { swaggerSpec } from "./docs/swagger.js";
@@ -23,6 +24,13 @@ if (missing.length > 0) {
 }
 
 const app = express();
+
+// CORS — allow all origins in non-production environments
+if (process.env.NODE_ENV !== "production") {
+    app.use(cors());
+    logger.warn("CORS: all origins allowed (development mode)");
+}
+
 app.use(express.json());
 app.use(requestLogger);
 
