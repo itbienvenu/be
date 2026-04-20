@@ -10,6 +10,7 @@ export class AuthMiddleware {
 
     constructor() {
         this.securityLayer = new SecurityLayer();
+        this.authenticate = this.authenticate.bind(this);
     }
 
     async authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {

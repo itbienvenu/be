@@ -55,6 +55,27 @@ export class JobRoutes {
             (req, res) => this.jobController.publishJob(req, res)
         );
 
+        // Recruiter: unpublish a job (published → draft)
+        this.router.patch(
+            "/:id/unpublish",
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.jobController.unpublishJob(req, res)
+        );
+
+        // Recruiter: archive a job (draft or published → archived)
+        this.router.patch(
+            "/:id/archive",
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.jobController.archiveJob(req, res)
+        );
+
+        // Recruiter: unarchive a job (archived → draft)
+        this.router.patch(
+            "/:id/unarchive",
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.jobController.unarchiveJob(req, res)
+        );
+
         // Public route to get a single job by ID (moved to bottom to avoid shadowing)
         this.router.get("/:id", (req, res) => this.jobController.getJobById(req, res));
     }
