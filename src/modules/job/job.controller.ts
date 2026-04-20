@@ -145,6 +145,19 @@ export class JobController {
             res.status(status).json({ success: false, message: error.message });
         }
     }
+
+    async unarchiveJob(req: Request, res: Response) {
+        try {
+            const recruiterId = (req as any).user?._id;
+            const { id } = req.params;
+            const result = await this.jobService.unarchiveJob(id, recruiterId);
+            res.status(200).json(result);
+        } catch (error: any) {
+            logger.error("UNARCHIVE_JOB_ERROR", error);
+            const status = error.statusCode ?? 400;
+            res.status(status).json({ success: false, message: error.message });
+        }
+    }
 }
 
 export default JobController;

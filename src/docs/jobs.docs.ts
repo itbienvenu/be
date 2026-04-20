@@ -638,7 +638,7 @@ export const jobPaths = {
             summary: "Archive a job",
             description:
                 "Moves a job to `archived` status from either `draft` or `published`. " +
-                "Archived jobs are hidden from applicants and cannot be edited or published. " +
+                "Archived jobs are hidden from applicants. Use `/unarchive` to restore it to draft. " +
                 "\n\n**Required role:** `recruiter` (must own the job)",
             security: [{ BearerAuth: [] }],
             parameters: [
@@ -672,6 +672,57 @@ export const jobPaths = {
                         "application/json": {
                             schema: { $ref: "#/components/schemas/ErrorResponse" },
                             example: { success: false, message: "Job is already archived" }
+                        }
+                    }
+                },
+                "401": { $ref: "#/components/responses/Unauthorized" },
+                "403": { $ref: "#/components/responses/Forbidden" },
+                "404": { $ref: "#/components/responses/NotFound" },
+                "500": { $ref: "#/components/responses/InternalError" }
+            }
+        }
+    },
+
+    "/api/v1/jobs/{id}/unarchive": {
+        patch: {
+            tags: ["Jobs"],
+            summary: "Unarchive a job (back to draft)",
+            description:
+                "Restores an `archived` job back to `draft` status. " +
+                "From draft you can edit it and publish again. " +
+                "\n\n**Required role:** `recruiter` (must own the job)",
+            security: [{ BearerAuth: [] }],
+            parameters: [
+                {
+                    name: "id",
+                    in: "path",
+                    required: true,
+                    schema: { type: "string" },
+                    description: "Job MongoDB ObjectId",
+                    example: "661f1b2c3d4e5f6a7b8c9d0e"
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Job restored to draft",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    success: { type: "boolean", example: true },
+                                    message: { type: "string", example: "Job unarchived and moved back to draft" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "400": {
+                    description: "Job is not archived",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            example: { success: false, message: "Job is not archived" }
                         }
                     }
                 },

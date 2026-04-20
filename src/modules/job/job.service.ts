@@ -42,4 +42,9 @@ export class JobService {
         await this.jobRepository.archiveJob(id, recruiterId);
         return { success: true, message: "Job archived successfully" };
     }
+
+    async unarchiveJob(id: string, recruiterId: string) {
+        await this.jobRepository.unarchiveJob(id, recruiterId);
+        return { success: true, message: "Job unarchived and moved back to draft" };
+    }
 }

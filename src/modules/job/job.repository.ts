@@ -258,4 +258,23 @@ export class JobRepository {
         }
         return result.acknowledged;
     }
+
+    async unarchiveJob(id: string, recruiterId: string): Promise<boolean> {
+        const db = await getDb();
+        if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+
+        const result = await db.collection("jobs").updateOne(
+            { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId), "metadata.status": "archived" },
+            { $set: { "metadata.status": "draft", "metadata.updated_at": new Date().toISOString() } }
+        );
+
+        if (result.matchedCount === 0) {
+            const exists = await db.collection("jobs").countDocuments({ _id: new ObjectId(id) });
+            if (exists === 0) throw new NotFoundError("Job not found");
+            const owned = await db.collection("jobs").countDocuments({ _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId) });
+            if (owned === 0) throw new ForbiddenError("You do not own this job");
+            throw new Error("Job is not archived");
+        }
+        return result.acknowledged;
+    }
 }
