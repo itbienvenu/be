@@ -320,11 +320,11 @@ export const jobPaths = {
                             examples: {
                                 missing_description: {
                                     summary: "Description not provided",
-                                    value: { error: "Job description is required" }
+                                    value: { success: false, message: "Job description is required" }
                                 },
                                 ai_parse_failed: {
                                     summary: "AI failed to parse description",
-                                    value: { error: "Failed to parse job description" }
+                                    value: { success: false, message: "Failed to parse job description" }
                                 }
                             }
                         }
@@ -332,19 +332,7 @@ export const jobPaths = {
                 },
                 "401": { $ref: "#/components/responses/Unauthorized" },
                 "403": { $ref: "#/components/responses/Forbidden" },
-                "500": {
-                    description: "Internal server error",
-                    content: {
-                        "application/json": {
-                            schema: {
-                                type: "object",
-                                properties: {
-                                    error: { type: "string", example: "Failed to create job" }
-                                }
-                            }
-                        }
-                    }
-                }
+                "500": { $ref: "#/components/responses/InternalError" }
             }
         }
     },
@@ -507,7 +495,7 @@ export const jobPaths = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    message: { type: "string", example: "Job updated successfully" }
+                                    data: { $ref: "#/components/schemas/JobFull" }
                                 }
                             }
                         }
@@ -558,7 +546,7 @@ export const jobPaths = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    message: { type: "string", example: "Job published successfully" }
+                                    data: { $ref: "#/components/schemas/JobFull" }
                                 }
                             }
                         }
@@ -609,7 +597,7 @@ export const jobPaths = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    message: { type: "string", example: "Job unpublished and moved back to draft" }
+                                    data: { $ref: "#/components/schemas/JobFull" }
                                 }
                             }
                         }
@@ -660,7 +648,7 @@ export const jobPaths = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    message: { type: "string", example: "Job archived successfully" }
+                                    data: { $ref: "#/components/schemas/JobFull" }
                                 }
                             }
                         }
@@ -711,7 +699,7 @@ export const jobPaths = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    message: { type: "string", example: "Job unarchived and moved back to draft" }
+                                    data: { $ref: "#/components/schemas/JobFull" }
                                 }
                             }
                         }

@@ -99,7 +99,7 @@ The Jobs API exposes two views of the same document:
 
 `POST /jobs` accepts a raw `description` string. Gemini AI parses it into a fully structured job document (skills with weights, scoring config, requirements, domain classification). The job is created in `draft` status — call `PATCH /jobs/:id/publish` to make it live.
 
-On success the endpoint returns `201` with `{ acknowledged: true, insertedId: "<ObjectId>" }` — not the full job document. Use `GET /jobs/recruiter/:id` with the returned `insertedId` to fetch the structured result.
+On success the endpoint returns `201` with `{ success: true, data: { acknowledged: true, insertedId: "<ObjectId>" } }` — not the full job document. Use `GET /api/v1/jobs/recruiter/:id` with the returned `insertedId` to fetch the structured result.
 
 Two distinct `400` cases are possible:
 - `"Job description is required"` — the `description` field was missing from the request body.

@@ -25,26 +25,26 @@ export class JobService {
 
     async patchJob(id: string, recruiterId: string, fields: Record<string, any>) {
         await this.jobRepository.patchJob(id, recruiterId, fields);
-        return { success: true, message: "Job updated successfully" };
+        return await this.getJobById(id, false, recruiterId);
     }
 
     async publishJob(id: string, recruiterId: string) {
         await this.jobRepository.publishJob(id, recruiterId);
-        return { success: true, message: "Job published successfully" };
+        return await this.getJobById(id, false, recruiterId);
     }
 
     async unpublishJob(id: string, recruiterId: string) {
         await this.jobRepository.unpublishJob(id, recruiterId);
-        return { success: true, message: "Job unpublished and moved back to draft" };
+        return await this.getJobById(id, false, recruiterId);
     }
 
     async archiveJob(id: string, recruiterId: string) {
         await this.jobRepository.archiveJob(id, recruiterId);
-        return { success: true, message: "Job archived successfully" };
+        return await this.getJobById(id, false, recruiterId);
     }
 
     async unarchiveJob(id: string, recruiterId: string) {
         await this.jobRepository.unarchiveJob(id, recruiterId);
-        return { success: true, message: "Job unarchived and moved back to draft" };
+        return await this.getJobById(id, false, recruiterId);
     }
 }

@@ -16,14 +16,17 @@ export class JobController {
     async createJob(req: Request, res: Response) {
         try {
             const userId = (req as any).user?._id;
+            if (!userId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing user ID" });
+            }
             const { description } = req.body;
             if (typeof description !== "string" || !description.trim()) {
-                return res.status(400).json({ error: "Job description is required" });
+                return res.status(400).json({ success: false, message: "Job description is required" });
             }
             const structuredJob = await this.jobAIService.generateStructuredJob(description.trim());
 
             if (!structuredJob) {
-                return res.status(400).json({ error: "Failed to parse job description" });
+                return res.status(400).json({ success: false, message: "Failed to parse job description" });
             }
 
             // Attach recruiterId
@@ -33,7 +36,7 @@ export class JobController {
             res.status(201).json(result);
         } catch (error: any) {
             logger.error("CREATE_JOB_ERROR", error);
-            res.status(500).json({ error: "Failed to create job" });
+            res.status(500).json({ success: false, message: "Failed to create job" });
         }
     }
 
@@ -44,7 +47,7 @@ export class JobController {
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("GET_ALL_JOBS_ERROR", error);
-            res.status(500).json({ error: "Failed to fetch jobs" });
+            res.status(500).json({ success: false, message: "Failed to fetch jobs" });
         }
     }
 
@@ -54,12 +57,12 @@ export class JobController {
             // Public view omits sensitive fields
             const result = await this.jobService.getJobById(id, true);
             if (!result.data) {
-                return res.status(404).json({ error: "Job not found" });
+                return res.status(404).json({ success: false, message: "Job not found" });
             }
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("GET_JOB_BY_ID_ERROR", error);
-            res.status(500).json({ error: "Failed to fetch job" });
+            res.status(500).json({ success: false, message: "Failed to fetch job" });
         }
     }
 
@@ -67,37 +70,47 @@ export class JobController {
         try {
             const id = req.params.id as string;
             const recruiterId = (req as any).user?._id;
+            if (!recruiterId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
+            }
 
             // Recruiter view includes ALL fields, but ONLY if they own the job (Zero Trust)
             const result = await this.jobService.getJobById(id, false, recruiterId);
             
             if (!result.data) {
                 return res.status(403).json({ 
-                    error: "Forbidden: Job not found or you do not have permission to view full details" 
+                    success: false,
+                    message: "Forbidden: Job not found or you do not have permission to view full details" 
                 });
             }
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("GET_RECRUITER_JOB_BY_ID_ERROR", error);
-            res.status(500).json({ error: "Failed to fetch job details" });
+            res.status(500).json({ success: false, message: "Failed to fetch job details" });
         }
     }
 
     async getRecruiterJobs(req: Request, res: Response) {
         try {
             const recruiterId = (req as any).user?._id;
+            if (!recruiterId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
+            }
             const result = await this.jobService.getJobsByRecruiter(recruiterId);
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("GET_RECRUITER_JOBS_ERROR", error);
-            res.status(500).json({ error: "Failed to fetch your jobs" });
+            res.status(500).json({ success: false, message: "Failed to fetch your jobs" });
         }
     }
 
     async patchJob(req: Request, res: Response) {
         try {
             const recruiterId = (req as any).user?._id;
-            const { id } = req.params;
+            if (!recruiterId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
+            }
+            const id = req.params.id as string;
             const result = await this.jobService.patchJob(id, recruiterId, req.body);
             res.status(200).json(result);
         } catch (error: any) {
@@ -110,7 +123,10 @@ export class JobController {
     async publishJob(req: Request, res: Response) {
         try {
             const recruiterId = (req as any).user?._id;
-            const { id } = req.params;
+            if (!recruiterId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
+            }
+            const id = req.params.id as string;
             const result = await this.jobService.publishJob(id, recruiterId);
             res.status(200).json(result);
         } catch (error: any) {
@@ -123,7 +139,10 @@ export class JobController {
     async unpublishJob(req: Request, res: Response) {
         try {
             const recruiterId = (req as any).user?._id;
-            const { id } = req.params;
+            if (!recruiterId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
+            }
+            const id = req.params.id as string;
             const result = await this.jobService.unpublishJob(id, recruiterId);
             res.status(200).json(result);
         } catch (error: any) {
@@ -136,7 +155,10 @@ export class JobController {
     async archiveJob(req: Request, res: Response) {
         try {
             const recruiterId = (req as any).user?._id;
-            const { id } = req.params;
+            if (!recruiterId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
+            }
+            const id = req.params.id as string;
             const result = await this.jobService.archiveJob(id, recruiterId);
             res.status(200).json(result);
         } catch (error: any) {
@@ -149,7 +171,10 @@ export class JobController {
     async unarchiveJob(req: Request, res: Response) {
         try {
             const recruiterId = (req as any).user?._id;
-            const { id } = req.params;
+            if (!recruiterId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
+            }
+            const id = req.params.id as string;
             const result = await this.jobService.unarchiveJob(id, recruiterId);
             res.status(200).json(result);
         } catch (error: any) {

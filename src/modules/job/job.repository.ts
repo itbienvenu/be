@@ -205,6 +205,7 @@ export class JobRepository {
     async publishJob(id: string, recruiterId: string): Promise<boolean> {
         const db = await getDb();
         if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+        if (!ObjectId.isValid(recruiterId)) throw new Error("Invalid recruiter ID");
 
         const result = await db.collection("jobs").updateOne(
             { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId), "metadata.status": "draft" },
@@ -224,6 +225,7 @@ export class JobRepository {
     async unpublishJob(id: string, recruiterId: string): Promise<boolean> {
         const db = await getDb();
         if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+        if (!ObjectId.isValid(recruiterId)) throw new Error("Invalid recruiter ID");
 
         const result = await db.collection("jobs").updateOne(
             { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId), "metadata.status": "published" },
@@ -243,6 +245,7 @@ export class JobRepository {
     async archiveJob(id: string, recruiterId: string): Promise<boolean> {
         const db = await getDb();
         if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+        if (!ObjectId.isValid(recruiterId)) throw new Error("Invalid recruiter ID");
 
         const result = await db.collection("jobs").updateOne(
             { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId), "metadata.status": { $in: ["draft", "published"] } },
@@ -262,6 +265,7 @@ export class JobRepository {
     async unarchiveJob(id: string, recruiterId: string): Promise<boolean> {
         const db = await getDb();
         if (!ObjectId.isValid(id)) throw new Error("Invalid job ID");
+        if (!ObjectId.isValid(recruiterId)) throw new Error("Invalid recruiter ID");
 
         const result = await db.collection("jobs").updateOne(
             { _id: new ObjectId(id), recruiterId: new ObjectId(recruiterId), "metadata.status": "archived" },
