@@ -32,4 +32,14 @@ export class JobService {
         await this.jobRepository.publishJob(id, recruiterId);
         return { success: true, message: "Job published successfully" };
     }
+
+    async unpublishJob(id: string, recruiterId: string) {
+        await this.jobRepository.unpublishJob(id, recruiterId);
+        return { success: true, message: "Job unpublished and moved back to draft" };
+    }
+
+    async archiveJob(id: string, recruiterId: string) {
+        await this.jobRepository.archiveJob(id, recruiterId);
+        return { success: true, message: "Job archived successfully" };
+    }
 }

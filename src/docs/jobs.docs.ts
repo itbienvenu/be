@@ -296,8 +296,18 @@ export const jobPaths = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    data: { $ref: "#/components/schemas/JobFull" }
+                                    data: {
+                                        type: "object",
+                                        properties: {
+                                            acknowledged: { type: "boolean", example: true },
+                                            insertedId:   { type: "string", example: "69e60b1290036afefcc801bf" }
+                                        }
+                                    }
                                 }
+                            },
+                            example: {
+                                success: true,
+                                data: { acknowledged: true, insertedId: "69e60b1290036afefcc801bf" }
                             }
                         }
                     }
@@ -307,13 +317,34 @@ export const jobPaths = {
                     content: {
                         "application/json": {
                             schema: { $ref: "#/components/schemas/ErrorResponse" },
-                            example: { success: false, message: "Failed to parse job description" }
+                            examples: {
+                                missing_description: {
+                                    summary: "Description not provided",
+                                    value: { error: "Job description is required" }
+                                },
+                                ai_parse_failed: {
+                                    summary: "AI failed to parse description",
+                                    value: { error: "Failed to parse job description" }
+                                }
+                            }
                         }
                     }
                 },
                 "401": { $ref: "#/components/responses/Unauthorized" },
                 "403": { $ref: "#/components/responses/Forbidden" },
-                "500": { $ref: "#/components/responses/InternalError" }
+                "500": {
+                    description: "Internal server error",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    error: { type: "string", example: "Failed to create job" }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     },
@@ -505,7 +536,7 @@ export const jobPaths = {
             summary: "Publish a draft job",
             description:
                 "Transitions a job from `draft` to `published` status, making it visible to applicants. " +
-                "Once published, the job cannot be edited — create a new draft if changes are needed. " +
+                "Once published, edit the job by unpublishing it first. " +
                 "\n\n**Required role:** `recruiter` (must own the job)",
             security: [{ BearerAuth: [] }],
             parameters: [
@@ -539,6 +570,108 @@ export const jobPaths = {
                         "application/json": {
                             schema: { $ref: "#/components/schemas/ErrorResponse" },
                             example: { success: false, message: "Job is not in draft state and cannot be published" }
+                        }
+                    }
+                },
+                "401": { $ref: "#/components/responses/Unauthorized" },
+                "403": { $ref: "#/components/responses/Forbidden" },
+                "404": { $ref: "#/components/responses/NotFound" },
+                "500": { $ref: "#/components/responses/InternalError" }
+            }
+        }
+    },
+
+    "/api/v1/jobs/{id}/unpublish": {
+        patch: {
+            tags: ["Jobs"],
+            summary: "Unpublish a job (back to draft)",
+            description:
+                "Reverts a `published` job back to `draft` status. " +
+                "Use this when you need to edit a published job — unpublish it, patch the details, then publish again. " +
+                "\n\n**Required role:** `recruiter` (must own the job)",
+            security: [{ BearerAuth: [] }],
+            parameters: [
+                {
+                    name: "id",
+                    in: "path",
+                    required: true,
+                    schema: { type: "string" },
+                    description: "Job MongoDB ObjectId",
+                    example: "661f1b2c3d4e5f6a7b8c9d0e"
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Job moved back to draft",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    success: { type: "boolean", example: true },
+                                    message: { type: "string", example: "Job unpublished and moved back to draft" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "400": {
+                    description: "Job is not in published state",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            example: { success: false, message: "Job is not in published state and cannot be unpublished" }
+                        }
+                    }
+                },
+                "401": { $ref: "#/components/responses/Unauthorized" },
+                "403": { $ref: "#/components/responses/Forbidden" },
+                "404": { $ref: "#/components/responses/NotFound" },
+                "500": { $ref: "#/components/responses/InternalError" }
+            }
+        }
+    },
+
+    "/api/v1/jobs/{id}/archive": {
+        patch: {
+            tags: ["Jobs"],
+            summary: "Archive a job",
+            description:
+                "Moves a job to `archived` status from either `draft` or `published`. " +
+                "Archived jobs are hidden from applicants and cannot be edited or published. " +
+                "\n\n**Required role:** `recruiter` (must own the job)",
+            security: [{ BearerAuth: [] }],
+            parameters: [
+                {
+                    name: "id",
+                    in: "path",
+                    required: true,
+                    schema: { type: "string" },
+                    description: "Job MongoDB ObjectId",
+                    example: "661f1b2c3d4e5f6a7b8c9d0e"
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Job archived successfully",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    success: { type: "boolean", example: true },
+                                    message: { type: "string", example: "Job archived successfully" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "400": {
+                    description: "Job is already archived",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            example: { success: false, message: "Job is already archived" }
                         }
                     }
                 },

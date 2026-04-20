@@ -119,6 +119,32 @@ export class JobController {
             res.status(status).json({ success: false, message: error.message });
         }
     }
+
+    async unpublishJob(req: Request, res: Response) {
+        try {
+            const recruiterId = (req as any).user?._id;
+            const { id } = req.params;
+            const result = await this.jobService.unpublishJob(id, recruiterId);
+            res.status(200).json(result);
+        } catch (error: any) {
+            logger.error("UNPUBLISH_JOB_ERROR", error);
+            const status = error.statusCode ?? 400;
+            res.status(status).json({ success: false, message: error.message });
+        }
+    }
+
+    async archiveJob(req: Request, res: Response) {
+        try {
+            const recruiterId = (req as any).user?._id;
+            const { id } = req.params;
+            const result = await this.jobService.archiveJob(id, recruiterId);
+            res.status(200).json(result);
+        } catch (error: any) {
+            logger.error("ARCHIVE_JOB_ERROR", error);
+            const status = error.statusCode ?? 400;
+            res.status(status).json({ success: false, message: error.message });
+        }
+    }
 }
 
 export default JobController;
