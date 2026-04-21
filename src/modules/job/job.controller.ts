@@ -2,6 +2,8 @@ import { JobService } from "./job.service.js";
 import { JobAIService } from "../ai/ai.service.js";
 import { type Request, type Response } from "express";
 import logger from "@/shared/utils/logger.js";
+import { validateJob } from "@/shared/utils/validator.js";
+import type { JobJSON } from "./job.types.js";
 
 
 export class JobController {
@@ -37,6 +39,88 @@ export class JobController {
         } catch (error: any) {
             logger.error("CREATE_JOB_ERROR", error);
             res.status(500).json({ success: false, message: "Failed to create job" });
+        }
+    }
+
+    /**
+     * Create a job with manually entered details (Hackathon Manual Entry)
+     * 
+     * Validates all required fields against the Job schema and returns validation
+     * errors as an array for frontend error handling.
+     * 
+     * @async
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {void} JSON response with success status and job data or validation errors
+     * 
+     * @example
+     * POST /jobs/manual-entry
+     * {
+     *   "title": "Senior React Developer",
+     *   "company": { "name": "TechCorp", "location": { "city": "Kigali", "country": "Rwanda" } },
+     *   "employment_type": "full_time",
+     *   "seniority_level": "senior",
+     *   "description": { "raw": "...", "summary": "..." },
+     *   "requirements": { "experience": { "min_years": 3 }, "education": [...] },
+     *   "skills": [...],
+     *   "domain": { "primary": "Technology" },
+     *   "scoring_config": { "weights": {...}, "rules": {...} }
+     * }
+     */
+    async createJobManually(req: Request, res: Response) {
+        try {
+            const userId = (req as any).user?._id;
+            if (!userId) {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: "Unauthorized: Missing user ID" 
+                });
+            }
+
+            const jobData: JobJSON = req.body;
+
+            // Validate against job schema
+            const { isValid, errors } = validateJob(jobData);
+
+            if (!isValid || errors) {
+                // Format validation errors as detailed array
+                const formattedErrors = (errors || []).map((error: any) => ({
+                    field: error.instancePath || "root",
+                    message: error.message,
+                    keyword: error.keyword,
+                    schemaPath: error.schemaPath
+                }));
+
+                return res.status(422).json({
+                    success: false,
+                    message: "Validation failed. Please check the errors below.",
+                    errors: formattedErrors
+                });
+            }
+
+            // Attach recruiterId
+            const jobToCreate = {
+                ...jobData,
+                recruiterId: userId,
+                metadata: {
+                    ...jobData.metadata,
+                    status: "draft"  // Always start as draft
+                }
+            };
+
+            const result = await this.jobService.createJob(jobToCreate);
+            
+            res.status(201).json({
+                success: true,
+                message: "Job created successfully in draft status",
+                data: result.data
+            });
+        } catch (error: any) {
+            logger.error("CREATE_JOB_MANUALLY_ERROR", error);
+            res.status(500).json({ 
+                success: false, 
+                message: error.message || "Failed to create job" 
+            });
         }
     }
 
