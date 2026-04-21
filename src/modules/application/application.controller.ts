@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { ApplicationService } from "./application.service.js";
+import type { ApplicationStatus } from "./application.types.js";
 import logger from "@/shared/utils/logger.js";
 import { NotFoundError, ForbiddenError, ValidationError, ConflictError } from "@/shared/utils/custom-errors.js";
 
@@ -12,6 +13,10 @@ export class ApplicationController {
             const userId = (req as any).user?._id;
             const { jobId } = req.params;
             const { coverLetter } = req.body;
+
+            if (typeof jobId !== "string") {
+                return res.status(400).json({ success: false, message: "Invalid jobId parameter" });
+            }
 
             const application = await this.service.apply(userId, jobId, coverLetter);
             res.status(201).json({ success: true, data: application });
@@ -42,6 +47,11 @@ export class ApplicationController {
         try {
             const recruiterUserId = (req as any).user?._id;
             const { jobId } = req.params;
+
+            if (typeof jobId !== "string") {
+                return res.status(400).json({ success: false, message: "Invalid jobId parameter" });
+            }
+
             const data = await this.service.getJobApplications(jobId, recruiterUserId);
             res.status(200).json({ success: true, data });
         } catch (error: any) {
@@ -57,6 +67,10 @@ export class ApplicationController {
             const userId = (req as any).user?._id;
             const role   = (req as any).user?.role as "applicant" | "recruiter";
             const { applicationId } = req.params;
+
+            if (typeof applicationId !== "string") {
+                return res.status(400).json({ success: false, message: "Invalid applicationId parameter" });
+            }
 
             const data = await this.service.getById(applicationId, userId, role);
             res.status(200).json({ success: true, data });
@@ -74,12 +88,16 @@ export class ApplicationController {
             const { applicationId } = req.params;
             const { status } = req.body;
 
+            if (typeof applicationId !== "string") {
+                return res.status(400).json({ success: false, message: "Invalid applicationId parameter" });
+            }
+
             const validStatuses = ["pending", "reviewed", "shortlisted", "rejected", "hired"];
-            if (!validStatuses.includes(status)) {
+            if (typeof status !== "string" || !validStatuses.includes(status)) {
                 return res.status(400).json({ success: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
             }
 
-            const result = await this.service.updateStatus(applicationId, status);
+            const result = await this.service.updateStatus(applicationId, status as ApplicationStatus);
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("UPDATE_STATUS_ERROR", error.message);

@@ -8,11 +8,16 @@
         "description",
         "domain",
         "metadata",
-        "scoring_config"
+        "scoring_config",
+        "recruiterId"
     ],
     "properties": {
         "_id": {
             "type": "string"
+        },
+        "recruiterId": {
+            "type": "string",
+            "description": "ID of the recruiter who created this job (set server-side)"
         },
         "title": {
             "type": "string"

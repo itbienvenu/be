@@ -80,7 +80,7 @@ export class ApplicationRepository {
                 }
             },
             { $sort: { appliedAt: -1 } }
-        ]).toArray();
+        ]).toArray() as Promise<ApplicationMyView[]>;
     }
 
     /** Get all applications for a job (recruiter view) */

@@ -1,7 +1,10 @@
-import { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 
 /**
  * Simple in-memory rate limiter for protecting endpoints from spam
+ * Uses lazy expiration to avoid memory leaks from persistent setInterval timers.
+ * Expired entries are cleaned up during request processing, not by background intervals.
+ *
  * @param windowMs - Time window in milliseconds (default: 60 seconds)
  * @param maxRequests - Maximum requests per window (default: 30)
  * @returns Express middleware function
@@ -12,20 +15,20 @@ import { Request, Response, NextFunction } from "express";
 export function rateLimitMiddleware(windowMs: number = 60000, maxRequests: number = 30) {
     const requestCounts = new Map<string, { count: number; resetTime: number }>();
 
-    // Cleanup old entries every 5 minutes
-    setInterval(() => {
+    return (req: Request, res: Response, next: NextFunction) => {
         const now = Date.now();
+        
+        // Lazy cleanup: Remove expired entries during request processing
+        // This avoids memory leaks from persistent timers when factory is called multiple times
         for (const [key, data] of requestCounts.entries()) {
             if (data.resetTime < now) {
                 requestCounts.delete(key);
             }
         }
-    }, 5 * 60 * 1000);
 
-    return (req: Request, res: Response, next: NextFunction) => {
         // Use user ID if authenticated, otherwise use IP address
-        const identifier = (req as any).user?._id || req.ip || "unknown";
-        const now = Date.now();
+        // Coerce to string to ensure stable Map keys (ObjectId, IPs, etc. all become strings)
+        const identifier = String((req as any).user?._id || req.ip || "unknown");
 
         let clientData = requestCounts.get(identifier);
 

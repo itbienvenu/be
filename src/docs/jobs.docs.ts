@@ -230,8 +230,10 @@ export const jobSchemas = {
         description:
             "Fully structured job data for manual entry (Hackathon feature). " +
             "All required fields must be provided as they would appear in the final job document. " +
-            "Validation errors are returned as a detailed array for frontend integration. " +
-            "The job is created in `draft` status automatically.",
+            "**NOTE: Do NOT include metadata in the request.** Metadata (created_at, updated_at, source, status) " +
+            "is automatically populated server-side: created_at and updated_at are set to current time, " +
+            "source is set to 'manual_entry', and status is always 'draft'. recruiterId is also set server-side from the authenticated user. " +
+            "Validation errors are returned as a detailed array for frontend integration.",
         properties: {
             title:            { type: "string", example: "Senior React Developer" },
             employment_type:  { type: "string", enum: ["full_time", "part_time", "contract", "temporary", "internship"], example: "full_time" },
@@ -266,7 +268,7 @@ export const jobSchemas = {
                         type: "object",
                         properties: {
                             min_years: { type: "number", example: 3 },
-                            max_years: { type: ["number", "null"], example: null },
+                            max_years: { type: "number", nullable: true, example: null },
                             roles: { type: "array", items: { type: "string" }, example: ["Frontend Engineer"] }
                         }
                     },
@@ -303,7 +305,7 @@ export const jobSchemas = {
             },
             responsibilities: { type: "array", items: { type: "string" } },
             languages:        { type: "array", items: { type: "string" }, example: ["English"] },
-            travel_required:  { type: ["boolean", "null"], example: false },
+            travel_required:  { type: "boolean", nullable: true, example: false },
             scoring_config:   { $ref: "#/components/schemas/JobScoringConfig" }
         }
     },
@@ -497,50 +499,10 @@ export const jobPaths = {
                         }
                     }
                 },
-                "400": {
-                    description: "Validation error (missing required field, invalid type, etc.)",
-                    content: {
-                        "application/json": {
-                            schema: {
-                                type: "object",
-                                properties: {
-                                    success: { type: "boolean", example: false },
-                                    message: { type: "string", example: "Validation failed. Please check the errors below." },
-                                    errors: {
-                                        type: "array",
-                                        items: {
-                                            type: "object",
-                                            properties: {
-                                                field: { type: "string", description: "JSON path to the problematic field", example: "/skills/0/level" },
-                                                message: { type: "string", description: "Validation error message", example: "must be equal to one of the allowed values" },
-                                                keyword: { type: "string", description: "JSON Schema validation keyword", example: "enum" },
-                                                schemaPath: { type: "string", description: "Path in the schema", example: "#/properties/skills/items/properties/level/enum" }
-                                            }
-                                        },
-                                        example: [
-                                            {
-                                                field: "/skills/0/level",
-                                                message: "must be equal to one of the allowed values",
-                                                keyword: "enum",
-                                                schemaPath: "#/properties/skills/items/properties/level/enum"
-                                            },
-                                            {
-                                                field: "/scoring_config/weights",
-                                                message: "must have required property 'skills'",
-                                                keyword: "required",
-                                                schemaPath: "#/properties/scoring_config/properties/weights/required"
-                                            }
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
                 "401": { $ref: "#/components/responses/Unauthorized" },
                 "403": { $ref: "#/components/responses/Forbidden" },
                 "422": {
-                    description: "Unprocessable entity — validation failed (same as 400, different semantic)",
+                    description: "Unprocessable entity — validation failed (missing required fields, invalid types, constraint violations, etc.)",
                     content: {
                         "application/json": {
                             schema: { $ref: "#/components/schemas/ErrorResponse" },
