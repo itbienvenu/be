@@ -25,7 +25,11 @@ export abstract class BaseAIService<T> {
         if (!key) throw new Error("GEMINI_API_KEY is not set in environment variables");
         this.apiKey = key;
 
-        this.ajv = new Ajv({ allErrors: true, strict: false });
+        this.ajv = new Ajv({ 
+            allErrors: true, 
+            strict: false,
+            coerceTypes: true // Automatically convert "1" to 1
+        });
         (addFormats as unknown as FormatsPlugin)(this.ajv);
         this.validator = this.ajv.compile<T>(schema);
         this.responseSchema = this.convertToGeminiSchema(schema);
@@ -47,7 +51,13 @@ export abstract class BaseAIService<T> {
             }
         }
 
-        if (schema.enum) geminiNode.enum = schema.enum;
+        if (schema.enum) {
+            geminiNode.type = "STRING";  // Force STRING type for enum compatibility
+            geminiNode.enum = schema.enum.map((val: any) => {
+                // Convert all enum values to strings for Gemini API
+                return typeof val === 'number' ? String(val) : val;
+            });
+        }
         if (schema.required) geminiNode.required = schema.required;
         if (schema.properties) {
             geminiNode.properties = Object.fromEntries(
@@ -71,6 +81,50 @@ export abstract class BaseAIService<T> {
             return text.substring(start, end + 1).trim();
         }
         return text.trim();
+    }
+
+    /**
+     * Recursively convert string enum values back to numbers where the schema
+     * defines numeric enums. Gemini stringifies all enum values, so we need to
+     * reverse that for fields that should be numbers.
+     */
+    private restoreNumericEnums(data: any, schema: any): any {
+        if (!data || !schema) return data;
+
+        // Handle arrays
+        if (Array.isArray(data)) {
+            return data.map(item => this.restoreNumericEnums(item, schema.items));
+        }
+
+        // Handle objects
+        if (typeof data === 'object' && data !== null) {
+            const result = { ...data };
+            
+            // Check schema properties
+            if (schema.properties) {
+                for (const [key, propSchema] of Object.entries(schema.properties)) {
+                    if (result[key] === undefined || result[key] === null) continue;
+
+                    const ps = propSchema as any;
+                    
+                    // If this property has numeric enum values in the schema, convert strings to numbers
+                    if (ps.enum && Array.isArray(ps.enum) && ps.enum.some((v: any) => typeof v === 'number')) {
+                        if (typeof result[key] === 'string' && !isNaN(Number(result[key]))) {
+                            result[key] = Number(result[key]);
+                        }
+                    }
+
+                    // Recurse into nested objects/arrays
+                    if (ps.properties || ps.items) {
+                        result[key] = this.restoreNumericEnums(result[key], ps);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        return data;
     }
 
     protected async callAI(input: string): Promise<T | null> {
@@ -108,6 +162,7 @@ export abstract class BaseAIService<T> {
             if (!text) return null;
 
             const cleanedText = this.extractJSON(text);
+            console.debug(`[AI RAW RESPONSE]:`, cleanedText);
             let parsed: T;
             try {
                 parsed = JSON.parse(cleanedText);
@@ -115,6 +170,9 @@ export abstract class BaseAIService<T> {
                 console.error("AI JSON Parse Error:", jsonErr.message);
                 return null;
             }
+
+            // Convert string enum values back to numbers (Gemini stringifies numeric enums)
+            parsed = this.restoreNumericEnums(parsed, this.responseSchema);
 
             const valid = this.validator(parsed);
             if (!valid) {

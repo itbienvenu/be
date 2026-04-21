@@ -59,6 +59,8 @@ export class ScreeningRepository {
             { $unwind: { path: "$applicant", preserveNullAndEmptyArrays: false } },
 
             // Project only the fields we need for screening
+            // Note: profile fields are stored at root level of applicant document,
+            // not nested under a 'profile' object
             {
                 $project: {
                     application_id: { $toString: "$_id" },
@@ -66,7 +68,18 @@ export class ScreeningRepository {
                     appliedAt:      1,
                     cvRawText:      1,
                     status:         1,
-                    profile:        "$applicant.profile"
+                    profile: {
+                        first_name:     "$applicant.first_name",
+                        last_name:      "$applicant.last_name",
+                        headline:       "$applicant.headline",
+                        bio:            "$applicant.bio",
+                        skills:         "$applicant.skills",
+                        experience:     "$applicant.experience",
+                        education:      "$applicant.education",
+                        projects:       "$applicant.projects",
+                        certifications: "$applicant.certifications",
+                        languages:      "$applicant.languages"
+                    }
                 }
             }
         ]).toArray();
@@ -114,13 +127,14 @@ export class ScreeningRepository {
             { $unwind: { path: "$applicant", preserveNullAndEmptyArrays: true } },
 
             // Shape the output
+            // Note: profile fields are at root level of applicant document
             {
                 $project: {
                     application_id:   { $toString: "$_id" },
                     applicant_id:     { $toString: "$applicantId" },
-                    first_name:       "$applicant.profile.first_name",
-                    last_name:        "$applicant.profile.last_name",
-                    headline:         "$applicant.profile.headline",
+                    first_name:       "$applicant.first_name",
+                    last_name:        "$applicant.last_name",
+                    headline:         "$applicant.headline",
                     screening_result: 1
                 }
             }

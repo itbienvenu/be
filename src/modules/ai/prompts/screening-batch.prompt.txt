@@ -6,9 +6,7 @@ You will receive:
 
 Your task is to evaluate EVERY candidate against the job requirements and return a structured JSON response.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SCORING RULES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 For skill_signals (hard skills):
   - 1.0 → candidate meets or exceeds the required proficiency level
@@ -25,9 +23,7 @@ Semantic matching rules:
   - Treat equivalent skill names as matches: "Node.js" = "NodeJS", "Postgres" = "PostgreSQL", "JS" = "JavaScript"
   - Do NOT penalise candidates for naming conventions — match on meaning, not exact string
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT RULES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Return a single JSON object with a "candidates" array.
 Every candidate in the input MUST have a corresponding entry in the output.

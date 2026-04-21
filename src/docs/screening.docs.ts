@@ -108,6 +108,8 @@ export const screeningPaths = {
             description:
                 "Evaluates all eligible applications (status: `pending` or `reviewed`) for the specified job " +
                 "using a single Gemini AI batch call followed by deterministic weighted scoring. " +
+                "\n\n**Candidate data sent to AI includes:** skills, experience (with technologies used), " +
+                "education, projects (with technologies), certifications, bio, and up to 3000 characters of CV text. " +
                 "\n\n**Scoring formula:**" +
                 "\n```\nfinal_score = (\n  skills_score      × weights.skills      +\n  experience_score  × weights.experience  +\n  education_score   × weights.education   +\n  resources_score   × weights.resources   +\n  soft_skills_score × weights.soft_skills\n) × 100\n```" +
                 "\n\n**Hard disqualification rules** (configured per job):" +

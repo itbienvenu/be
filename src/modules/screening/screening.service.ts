@@ -62,13 +62,18 @@ export class ScreeningService {
         }
 
         // 3. Assemble condensed CandidateInput[] for the AI and scorer
-        const candidates: CandidateInput[] = applications.map(app => ({
-            application_id: app.application_id,
-            applicant_id:   app.applicant_id,
-            appliedAt:      app.appliedAt,
-            cvRawText:      app.cvRawText,
-            profile:        app.profile,
-        }));
+        const candidates: CandidateInput[] = applications.map(app => {
+            if (!app.profile) {
+                logger.warn(`ScreeningService: applicant ${app.applicant_id} has no profile — will score with empty profile`);
+            }
+            return {
+                application_id: app.application_id,
+                applicant_id:   app.applicant_id,
+                appliedAt:      app.appliedAt,
+                cvRawText:      app.cvRawText,
+                profile:        app.profile,
+            };
+        });
 
         // 4. ONE batch call to Gemini — all candidates sent together.
         //    If the AI fails (returns null), we default all signals to 0
