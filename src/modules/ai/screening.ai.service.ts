@@ -154,9 +154,7 @@ export class ScreeningAIService extends BaseAIService<BatchAIResponse> {
             lines.push(`CV Text: ${cvExcerpt || "not available"}`);
             lines.push("");
         }
-
-        console.log("RECEIVED DATA TO SCREEN", lines.join("\n"))
-
+        console.log("AI JOB LINES", lines.join("\n"));
         return lines.join("\n");
     }
 }

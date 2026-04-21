@@ -109,7 +109,7 @@ export class ScreeningScorer {
             applicant_id:   candidate.applicant_id,
             appliedAt:      candidate.appliedAt,
             screening_result: result,
-            new_status: "shortlisted",
+            new_status: disqual.disqualified ? "rejected" : "shortlisted",
         };
     }
 

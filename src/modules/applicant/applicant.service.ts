@@ -2,6 +2,7 @@ import { ApplicantRepository } from "./applicant.repository.js";
 import { CVParserService } from "@/modules/ai/ai.service.js";
 import { PDFTool } from "@/shared/utils/pdfs-tool.js";
 import { CloudinaryTool } from "@/shared/utils/cloudinary-tool.js";
+import logger from "@/shared/utils/logger.js";
 import type { ApplicantJSON, ApplicantProfileJSON } from "./applicant.types.js";
 
 export class ApplicantService {
@@ -57,9 +58,37 @@ export class ApplicantService {
 
     /**
      * Step 2: Finalize and save the applicant profile (After user review)
+     * Handles both nested { profile: { ... } } and flat { first_name: ... } payloads.
      */
-    async updateProfile(userId: string, data: Omit<ApplicantJSON, "_id" | "userId">): Promise<ApplicantJSON | null> {
-        const success = await this.applicantRepo.upsertByUserId(userId, data);
+    async updateProfile(userId: string, data: any): Promise<ApplicantJSON | null> {
+        logger.info(`ApplicantService: Restructuring input payload for user ${userId.substring(0, 5)}...`);
+        const structured: any = {
+            profile: data.profile || {}
+        };
+
+        // 1. Move root-level CV fields
+        if (data.cvUrl) structured.cvUrl = data.cvUrl;
+        if (data.cvPublicId) structured.cvPublicId = data.cvPublicId;
+        if (data.cvRawText) structured.cvRawText = data.cvRawText;
+
+        // 2. Identify profile-specific fields
+        const profileFields = [
+            "first_name", "last_name", "email", "headline", "bio", "location",
+            "gender", "nationality", "date_of_birth", "profile_picture",
+            "skills", "languages", "experience", "education",
+            "certifications", "projects", "availability", "social_links",
+            "preferences", "area_of_expertise"
+        ];
+
+        // 3. Collect flat profile fields from the root
+        for (const field of profileFields) {
+            if (data[field] !== undefined) {
+                structured.profile[field] = data[field];
+            }
+        }
+
+        logger.info(`ApplicantService: Executing upsertByUserId for ${userId.substring(0, 5)}...`);
+        const success = await this.applicantRepo.upsertByUserId(userId, structured);
         if (success) {
             return await this.applicantRepo.findByUserId(userId);
         }
