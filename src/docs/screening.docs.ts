@@ -108,11 +108,14 @@ export const screeningPaths = {
             description:
                 "Evaluates all eligible applications (status: `pending` or `reviewed`) for the specified job " +
                 "using a single Gemini AI batch call followed by deterministic weighted scoring. " +
+                "\n\n**Candidate data sent to AI includes:** skills, experience (with technologies used), " +
+                "education, projects (with technologies), certifications, bio, and up to 3000 characters of CV text. " +
                 "\n\n**Scoring formula:**" +
                 "\n```\nfinal_score = (\n  skills_score      × weights.skills      +\n  experience_score  × weights.experience  +\n  education_score   × weights.education   +\n  resources_score   × weights.resources   +\n  soft_skills_score × weights.soft_skills\n) × 100\n```" +
-                "\n\n**Hard disqualification rules** (configured per job):" +
-                "\n- `required_skills_must_match`: candidates missing any required skill → auto-rejected" +
-                "\n- `min_experience_required`: candidates below minimum years → auto-rejected" +
+                "\n\n**Candidate Scoring & Rejection Rules** (configured per job):" +
+                "\nCandidates who do not meet the following mandatory requirements are automatically assigned a status of `rejected` (moving them out of the primary shortlist), but they **still receive a partial score** and detailed entry in the `gaps` list for tracking purposes:" +
+                "\n- `required_skills_must_match`: Ensures candidates have demonstrated all skills marked as required." +
+                "\n- `min_experience_required`: Verifies the candidate meets the minimum years of experience threshold." +
                 "\n\nResults are persisted on each application document and returned as a ranked shortlist. " +
                 "Re-running screening overwrites previous results. " +
                 "\n\n**Required role:** `recruiter` (must own the job)",

@@ -25,7 +25,12 @@ export abstract class BaseAIService<T> {
         if (!key) throw new Error("GEMINI_API_KEY is not set in environment variables");
         this.apiKey = key;
 
-        this.ajv = new Ajv({ allErrors: true, strict: false });
+        this.ajv = new Ajv({ 
+            allErrors: true, 
+            strict: false,
+            // Gemini often returns numbers as strings; AJV coercion converts them back to numbers
+            coerceTypes: true 
+        });
         (addFormats as unknown as FormatsPlugin)(this.ajv);
         this.validator = this.ajv.compile<T>(schema);
         this.responseSchema = this.convertToGeminiSchema(schema);
@@ -47,7 +52,13 @@ export abstract class BaseAIService<T> {
             }
         }
 
-        if (schema.enum) geminiNode.enum = schema.enum;
+        if (schema.enum) {
+            geminiNode.type = "STRING";  // Force STRING type for enum compatibility
+            geminiNode.enum = schema.enum.map((val: any) => {
+                // Convert all enum values to strings for Gemini API
+                return typeof val === 'number' ? String(val) : val;
+            });
+        }
         if (schema.required) geminiNode.required = schema.required;
         if (schema.properties) {
             geminiNode.properties = Object.fromEntries(
@@ -73,9 +84,11 @@ export abstract class BaseAIService<T> {
         return text.trim();
     }
 
+
+
     protected async callAI(input: string): Promise<T | null> {
         const prompt = `${this.systemPrompt}\nInput:\n"""\n${input}\n"""`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent`;
 
         try {
             const response = await fetch(url, {

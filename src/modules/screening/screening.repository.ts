@@ -59,6 +59,7 @@ export class ScreeningRepository {
             { $unwind: { path: "$applicant", preserveNullAndEmptyArrays: false } },
 
             // Project only the fields we need for screening
+            // Note: profile fields are stored under '$applicant.profile'
             {
                 $project: {
                     application_id: { $toString: "$_id" },
@@ -66,7 +67,18 @@ export class ScreeningRepository {
                     appliedAt:      1,
                     cvRawText:      1,
                     status:         1,
-                    profile:        "$applicant.profile"
+                    profile: {
+                        first_name:     "$applicant.profile.first_name",
+                        last_name:      "$applicant.profile.last_name",
+                        headline:       "$applicant.profile.headline",
+                        bio:            "$applicant.profile.bio",
+                        skills:         "$applicant.profile.skills",
+                        experience:     "$applicant.profile.experience",
+                        education:      "$applicant.profile.education",
+                        projects:       "$applicant.profile.projects",
+                        certifications: "$applicant.profile.certifications",
+                        languages:      "$applicant.profile.languages"
+                    }
                 }
             }
         ]).toArray();
@@ -114,6 +126,7 @@ export class ScreeningRepository {
             { $unwind: { path: "$applicant", preserveNullAndEmptyArrays: true } },
 
             // Shape the output
+            // Note: identity fields are nested under '$applicant.profile'
             {
                 $project: {
                     application_id:   { $toString: "$_id" },

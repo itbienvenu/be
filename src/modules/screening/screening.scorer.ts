@@ -58,36 +58,17 @@ export class ScreeningScorer {
 
         // Step 1 — total years of experience (needed for both disqualification and scoring).
         // asOf is passed in from the service so the result is stable across reruns.
-        const totalYears = this.computeTotalExperienceYears(candidate.profile.experience ?? [], asOf);
+        const totalYears = this.computeTotalExperienceYears(candidate.profile?.experience ?? [], asOf);
 
-        // Step 2 — hard disqualification rules run BEFORE any arithmetic.
-        // If a candidate fails a mandatory rule their final_score is forced to 0
-        // and they are excluded from the ranked shortlist entirely.
+        // Step 2 — Check for 'Soft' disqualification (violations go into gaps, but don't force 0)
         const disqual = this.applyDisqualificationRules(job, skillSignals, totalYears);
-        if (disqual.disqualified) {
-            const result: ScreeningResult = {
-                rank: null,
-                final_score: 0,
-                dimension_breakdown: { skills: 0, experience: 0, education: 0, resources: 0, soft_skills: 0 },
-                strengths: [],
-                gaps: disqual.reasons,
-                recommendation: "Candidate does not meet mandatory requirements.",
-                screened_at: asOf,
-            };
-            return {
-                application_id: candidate.application_id,
-                applicant_id:   candidate.applicant_id,
-                appliedAt:      candidate.appliedAt,
-                screening_result: result,
-                new_status: "rejected",
-            };
-        }
+        const disqualGaps = disqual.reasons;
 
         // Step 3 — compute each dimension score (all values in [0.0, 1.0])
         const skillsScore     = this.computeSkillsScore(job.skills ?? [], skillSignals);
         const experienceScore = this.computeExperienceScore(totalYears, job.requirements?.experience?.min_years);
-        const educationScore  = this.computeEducationScore(candidate.profile.education ?? [], job.requirements?.education);
-        const resourcesScore  = this.computeResourcesScore(job.resources ?? [], candidate.profile.skills ?? [], candidate.cvRawText ?? "");
+        const educationScore  = this.computeEducationScore(candidate.profile?.education ?? [], job.requirements?.education);
+        const resourcesScore  = this.computeResourcesScore(job.resources ?? [], candidate.profile?.skills ?? [], candidate.cvRawText ?? "");
         const softSkillsScore = this.computeSoftSkillsScore(job.soft_skills ?? [], softSignals);
 
         const breakdown: DimensionBreakdown = {
@@ -104,8 +85,12 @@ export class ScreeningScorer {
         // If the AI was unavailable (null aiResult), generate deterministic fallbacks
         // from the computed dimension_breakdown so the API contract is always satisfied.
         const aiUnavailable = aiResult === null;
-        const finalStrengths     = aiUnavailable ? this.buildFallbackStrengths(breakdown, job)     : strengths;
-        const finalGaps          = aiUnavailable ? this.buildFallbackGaps(breakdown, job)          : gaps;
+        const finalStrengths = aiUnavailable ? this.buildFallbackStrengths(breakdown, job) : strengths;
+        // Combine AI gaps with hard-rule violation gaps (like missing years of experience)
+        const finalGaps = [
+            ...(aiUnavailable ? this.buildFallbackGaps(breakdown, job) : gaps),
+            ...disqualGaps
+        ];
         const finalRecommendation = aiUnavailable ? this.buildFallbackRecommendation(breakdown, job, finalScore) : recommendation;
 
         const result: ScreeningResult = {
@@ -124,7 +109,7 @@ export class ScreeningScorer {
             applicant_id:   candidate.applicant_id,
             appliedAt:      candidate.appliedAt,
             screening_result: result,
-            new_status: "shortlisted",
+            new_status: disqual.disqualified ? "rejected" : "shortlisted",
         };
     }
 

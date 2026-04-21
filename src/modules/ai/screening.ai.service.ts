@@ -54,15 +54,15 @@ export class ScreeningAIService extends BaseAIService<BatchAIResponse> {
         return this.callAI(prompt);
     }
 
-    // ─── Prompt Builder ───────────────────────────────────────────────────────
 
     /**
      * Build the full batch prompt string.
      *
      * Job context is included once at the top to avoid repeating it per candidate.
      * Each candidate gets a condensed block with only the fields the AI needs
-     * (structured skills, experience summary, education, bio, CV excerpt).
-     * We cap the CV excerpt at 500 chars to stay within token limits for large batches.
+     * (structured skills, experience summary, education, projects, certifications,
+     * bio, and CV text). We cap the CV text at 3000 chars to balance token usage
+     * against signal quality — 500 chars was too short to cover skills/experience.
      */
     private buildBatchPrompt(job: JobJSON, candidates: CandidateInput[]): string {
         const lines: string[] = [];
@@ -109,36 +109,52 @@ export class ScreeningAIService extends BaseAIService<BatchAIResponse> {
         for (const c of candidates) {
             lines.push(`--- Candidate: ${c.applicant_id} ---`);
 
-            // Structured skills — guard against missing array in DB document
-            const skillList = (c.profile.skills ?? [])
+            // Structured skills — guard against missing profile or skills array in DB document
+            const skillList = (c.profile?.skills ?? [])
                 .map(s => `${s.name} (${s.level}, ${s.years_of_experience ?? 0} yrs)`)
                 .join(", ");
             lines.push(`Skills: ${skillList || "none listed"}`);
 
-            // Experience summary — role, company, dates
-            const expSummary = (c.profile.experience ?? [])
+            // Experience summary — role, company, dates + technologies used
+            const expSummary = (c.profile?.experience ?? [])
                 .map(e => {
                     const end = e.is_current || !e.end_date ? "present" : e.end_date;
-                    return `${e.role} at ${e.company} (${e.start_date} – ${end})`;
+                    const tech = e.technologies?.length ? ` [${e.technologies.join(", ")}]` : "";
+                    return `${e.role} at ${e.company} (${e.start_date} – ${end})${tech}`;
                 })
                 .join("; ");
             lines.push(`Experience: ${expSummary || "none listed"}`);
 
             // Highest education
-            const edu = (c.profile.education ?? [])
+            const edu = (c.profile?.education ?? [])
                 .map(e => `${e.degree}${e.field_of_study ? ` in ${e.field_of_study}` : ""}`)
                 .join("; ");
             lines.push(`Education: ${edu || "none listed"}`);
 
-            // Bio
-            lines.push(`Bio: ${c.profile.bio || "not provided"}`);
+            // Projects — technologies are key skill signals
+            const projects = (c.profile?.projects ?? [])
+                .map(p => {
+                    const tech = p.technologies?.length ? ` [${p.technologies.join(", ")}]` : "";
+                    return `${p.name}${tech}`;
+                })
+                .join("; ");
+            if (projects) lines.push(`Projects: ${projects}`);
 
-            // CV text excerpt (capped at 500 chars to manage token usage)
-            const cvExcerpt = c.cvRawText.slice(0, 500).replace(/\n+/g, " ").trim();
-            lines.push(`CV Excerpt: ${cvExcerpt || "not available"}`);
+            // Certifications
+            const certs = (c.profile?.certifications ?? [])
+                .map(cert => cert.name)
+                .join(", ");
+            if (certs) lines.push(`Certifications: ${certs}`);
+
+            // Bio
+            lines.push(`Bio: ${c.profile?.bio || "not provided"}`);
+
+            // Full CV text (capped at 3000 chars — enough to cover skills, experience, and projects)
+            const cvExcerpt = c.cvRawText.slice(0, 3000).replace(/\n+/g, " ").trim();
+            lines.push(`CV Text: ${cvExcerpt || "not available"}`);
             lines.push("");
         }
-
+        console.log("AI JOB LINES", lines.join("\n"));
         return lines.join("\n");
     }
 }

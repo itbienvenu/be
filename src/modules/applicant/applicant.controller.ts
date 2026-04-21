@@ -24,7 +24,7 @@ export class ApplicantController {
                 data
             });
         } catch (error: any) {
-            logger.error("UPLOAD_CV_ERROR", error.message);
+            logger.error("UPLOAD_CV_ERROR", error);
             res.status(500).json({ success: false, message: error.message || "Internal server error" });
         }
     }
@@ -39,7 +39,7 @@ export class ApplicantController {
 
             res.status(200).json({ success: true, message: "Profile saved successfully", data: updatedProfile });
         } catch (error: any) {
-            logger.error("SAVE_PROFILE_ERROR", error.message);
+            logger.error("SAVE_PROFILE_ERROR", error);
             res.status(500).json({ success: false, message: "Internal server error" });
         }
     }
@@ -54,7 +54,7 @@ export class ApplicantController {
 
             res.status(200).json({ success: true, data: profile });
         } catch (error: any) {
-            logger.error("GET_PROFILE_ERROR", error.message);
+            logger.error("GET_PROFILE_ERROR", error);
             res.status(500).json({ success: false, message: "Internal server error" });
         }
     }

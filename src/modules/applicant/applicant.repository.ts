@@ -10,6 +10,8 @@ export class ApplicantRepository {
      */
     async upsertByUserId(userId: string, data: Omit<ApplicantJSON, "_id" | "userId">): Promise<boolean> {
         const db = await getDb();
+        const { _id, userId: _, ...sanitizedData } = data as any;
+
         const query = ObjectId.isValid(userId)
             ? { userId: new ObjectId(userId) }
             : { userId: userId };
@@ -18,7 +20,7 @@ export class ApplicantRepository {
             query,
             {
                 $set: {
-                    ...data,
+                    ...sanitizedData,
                     updatedAt: new Date()
                 },
                 $setOnInsert: {
