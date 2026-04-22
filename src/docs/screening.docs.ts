@@ -131,19 +131,15 @@ export const screeningPaths = {
                 }
             ],
             responses: {
-                "200": {
-                    description: "Screening complete — ranked shortlist returned. Returns an empty array if no eligible applications were found for this job.",
+                "202": {
+                    description: "Screening started — evaluations happen in the background. Candidates are processed in parallel batches for high throughput. Results will be available in the shortlist shortly.",
                     content: {
                         "application/json": {
                             schema: {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    data: {
-                                        type: "array",
-                                        items: { $ref: "#/components/schemas/ShortlistEntry" },
-                                        description: "Candidates sorted by final_score descending. Disqualified candidates are excluded. Empty array if no eligible applications exist."
-                                    }
+                                    message: { type: "string", example: "AI screening has started. It may take a minute to process all candidates. Please refresh the shortlist shortly." }
                                 }
                             }
                         }

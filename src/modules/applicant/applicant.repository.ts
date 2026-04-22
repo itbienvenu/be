@@ -1,17 +1,24 @@
 import { getDb } from "@/config/database.js";
 import { ObjectId } from "mongodb";
 import type { ApplicantJSON } from "./applicant.types.js";
+import { cache } from "@/shared/utils/cache.js";
 
 export class ApplicantRepository {
     private readonly collection = "applicants";
 
     async createImported(data: Omit<ApplicantJSON, "_id">): Promise<ApplicantJSON> {
         const db = await getDb();
-        const payload = {
+        
+        // Safety: Ensure userId is stored as an ObjectId for consistent joins across the platform
+        const payload: any = {
             ...data,
             createdAt: new Date(),
             updatedAt: new Date()
         };
+
+        if (data.userId && ObjectId.isValid(data.userId)) {
+            payload.userId = new ObjectId(data.userId);
+        }
 
         const result = await db.collection(this.collection).insertOne(payload);
         return {
@@ -45,6 +52,9 @@ export class ApplicantRepository {
             },
             { upsert: true }
         );
+        if (result.acknowledged) {
+            cache.delete(`applicant:${userId}`);
+        }
         return result.acknowledged;
     }
 
@@ -52,6 +62,10 @@ export class ApplicantRepository {
      * Find applicant profile by userId with basic user info joined
      */
     async findByUserId(userId: string): Promise<any | null> {
+        const cacheKey = `applicant:${userId}`;
+        const cached = cache.get<any>(cacheKey);
+        if (cached) return cached;
+
         const db = await getDb();
         const matchQuery = ObjectId.isValid(userId)
             ? { userId: new ObjectId(userId) }
@@ -75,7 +89,11 @@ export class ApplicantRepository {
             }
         ]).toArray();
 
-        return result.length > 0 ? result[0] : null;
+        const found = result.length > 0 ? result[0] : null;
+        if (found) {
+            cache.set(cacheKey, found, 60 * 1000); // 1 minute cache
+        }
+        return found;
     }
 
     /**
@@ -91,6 +109,9 @@ export class ApplicantRepository {
             query,
             { $set: { ...flatUpdate, updatedAt: new Date() } }
         );
+        if (result.matchedCount > 0) {
+            cache.delete(`applicant:${userId}`);
+        }
         return result.matchedCount > 0;
     }
 
@@ -99,8 +120,12 @@ export class ApplicantRepository {
      */
     async findByEmail(email: string): Promise<any | null> {
         const db = await getDb();
+        // Check both 'Email' (sourcing spec) and 'email' (platform spec)
         const result = await db.collection(this.collection).findOne({
-            "profile.Email": email
+            $or: [
+                { "profile.Email": email },
+                { "profile.email": email }
+            ]
         });
         return result;
     }

@@ -11,16 +11,16 @@ export class JobService {
         return await this.jobRepository.createJob(data);
     }
 
-    async getAllJobs(isPublic: boolean = true) {
-        return await this.jobRepository.getAllJobs(isPublic);
+    async getAllJobs(isPublic: boolean = true, page: number = 1, limit: number = 10) {
+        return await this.jobRepository.getAllJobs(isPublic, page, limit);
     }
 
     async getJobById(id: string, isPublic: boolean = true, recruiterId?: string) {
         return await this.jobRepository.getJobById(id, isPublic, recruiterId);
     }
 
-    async getJobsByRecruiter(recruiterId: string) {
-        return await this.jobRepository.getJobsByRecruiter(recruiterId);
+    async getJobsByRecruiter(recruiterId: string, page: number = 1, limit: number = 10) {
+        return await this.jobRepository.getJobsByRecruiter(recruiterId, page, limit);
     }
 
     async patchJob(id: string, recruiterId: string, fields: Record<string, any>) {
@@ -46,5 +46,9 @@ export class JobService {
     async unarchiveJob(id: string, recruiterId: string) {
         await this.jobRepository.unarchiveJob(id, recruiterId);
         return await this.getJobById(id, false, recruiterId);
+    }
+
+    async deleteJob(id: string, recruiterId: string) {
+        return await this.jobRepository.deleteJob(id, recruiterId);
     }
 }

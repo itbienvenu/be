@@ -107,13 +107,19 @@ export const sourcingPaths = {
                 }
             },
             responses: {
-                "201": {
-                    description: "Import successful — all candidates created and linked to the job.",
-                    content: { "application/json": { schema: { $ref: "#/components/schemas/SourcingBulkUploadResponse" } } }
-                },
-                "200": {
-                    description: "Import completed with partial failures. Check the results array for details.",
-                    content: { "application/json": { schema: { $ref: "#/components/schemas/SourcingBulkUploadResponse" } } }
+                "202": {
+                    description: "Import started — processing happens in the background. AI parsing and candidate creation are parallelized for speed. Refresh the job's shortlist shortly.",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    success: { type: "boolean", example: true },
+                                    message: { type: "string", example: "Bulk import started in the background. It may take a minute to process all candidates." }
+                                }
+                            }
+                        }
+                    }
                 },
                 "400": {
                     description: "Missing required parameters or invalid file type.",
@@ -134,6 +140,65 @@ export const sourcingPaths = {
                         }
                     }
                 },
+                "500": { $ref: "#/components/responses/InternalError" }
+            }
+        }
+    },
+
+    "/api/v1/sourcing/batch-upload-cvs": {
+        post: {
+            tags: ["Sourcing"],
+            summary: "Batch upload PDF resumes for a job",
+            description: 
+                "Accepts a list of PDF files and a jobId. " +
+                "The system parses each PDF using Gemini AI to extract candidate details and automatically creates applications for the specified job." +
+                "\n\n**Frontend Integration:**" +
+                "\n1. Send a `multipart/form-data` request." +
+                "\n2. Field name for files must be `cvs`." +
+                "\n3. Max 50 files per request.",
+            security: [{ BearerAuth: [] }],
+            requestBody: {
+                required: true,
+                content: {
+                    "multipart/form-data": {
+                        schema: {
+                            type: "object",
+                            required: ["jobId", "cvs"],
+                            properties: {
+                                jobId: { type: "string", example: "661f1b2c3d4e5f6a7b8c9d10" },
+                                cvs: {
+                                    type: "array",
+                                    items: { type: "string", format: "binary" }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responses: {
+                "202": {
+                    description: "Batch processing started in the background.",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    success: { type: "boolean", example: true },
+                                    message: { type: "string", example: "Processing 10 CVs in the background. They will appear in your dashboard shortly." }
+                                }
+                            }
+                        }
+                    }
+                },
+                "400": {
+                    description: "Missing parameters or no files uploaded.",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/ErrorResponse" }
+                        }
+                    }
+                },
+                "401": { $ref: "#/components/responses/Unauthorized" },
                 "500": { $ref: "#/components/responses/InternalError" }
             }
         }

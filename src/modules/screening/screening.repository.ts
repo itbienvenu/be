@@ -47,7 +47,7 @@ export class ScreeningRepository {
             { $match: { jobId: new ObjectId(jobId), status: { $in: ["pending", "reviewed"] } } },
 
             // Join with applicants collection on applicantId → userId
-            // Note: applicantId is stored as ObjectId, userId in applicants is also ObjectId
+            // Robust Join: Matches regardless of whether userId is stored as String or ObjectId
             {
                 $lookup: {
                     from: "applicants",

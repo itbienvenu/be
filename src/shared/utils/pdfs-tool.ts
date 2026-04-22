@@ -75,10 +75,10 @@ export class PDFTool {
      */
     async readPdfFromBuffer(buffer: Buffer): Promise<string> {
         try {
-            const pdf = new PDFParse({ data: buffer });
-            const data = await pdf.getText();
+            const parser = new PDFParse({ data: buffer });
+            const result = await parser.getText();
 
-            const text = data.text?.trim();
+            const text = result.text?.trim();
 
             if (!text || text.length < 50) {
                 throw new Error("Invalid or empty PDF content");

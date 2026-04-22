@@ -1,5 +1,21 @@
 # Umurava Backend AI Service
 
+## System Architecture
+
+```mermaid
+graph TD
+    Client[Recruiter / Applicant] <-->|REST API / JSON| Server[Express.js Server]
+    Server <-->|Query / Persist| DB[(MongoDB Atlas)]
+    Server -->|Parse / Screen / Rank| Gemini[Google Gemini AI SDK]
+    Server -->|Storage| Cloudinary[Cloudinary CDN]
+    
+    subgraph "AI Pipeline"
+        Gemini -->|Structured Output| Validator[AJV Schema Validator]
+        Validator -->|Success| Logic[Scoring Logic]
+        Validator -->|Fail| Fallback[Deterministic Fallback]
+    end
+```
+
 ## Setup
 1. Ensure you have Node.js >= 20.0.0 installed.
 2. Install dependencies:
@@ -12,6 +28,20 @@
    ```
 4. Configure your environment variables in `.env`.
 
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `PORT` | Server port | `3001` |
+| `MONGODB_URI` | Connection string for MongoDB | `mongodb+srv://...` |
+| `JWT_SECRET` | Secret key for access tokens | `your_secret` |
+| `REFRESH_SECRET` | Secret key for refresh tokens | `your_refresh_secret` |
+| `GEMINI_API_KEY` | API key from Google AI Studio | `AIza...` |
+| `GEMINI_AI_MODEL` | Model version to use | `gemini-1.5-flash` |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary name | `umurava` |
+| `CLOUDINARY_API_KEY` | Cloudinary API Key | `...` |
+| `CLOUDINARY_API_SECRET` | Cloudinary API Secret | `...` |
+
 ## Running the Server
 
 | Command | Description |
@@ -19,6 +49,19 @@
 | `npm run dev` | Development mode with hot-reload (`tsx watch`) |
 | `npm start` | Production / one-shot start (`tsx src/index.ts`) |
    - **IMPORTANT**: `MONGODB_TLS_ALLOW_INVALID_CERTS` is for local development only. Do NOT enable it in production unless strictly necessary for corporate proxy environments, and always ensure `ALLOW_DEVELOPMENT_CERTS=true` is set to acknowledge the risk.
+
+## Deployment Instructions
+
+### Standard Node.js
+1. Build the project (if using a build step) or run directly with `tsx`.
+2. Ensure all environment variables are set in your CI/CD platform.
+3. Start the process: `npm start`.
+
+### Cloud Deployment (Railway / Render)
+1. Link your GitHub repository.
+2. The system detects `package.json` and uses the `start` script.
+3. Add the required environment variables in the dashboard.
+4. (Optional) For Railway, `nixpacks.toml` is included to optimize the build environment.
 
 ## Logging
 
@@ -74,6 +117,9 @@ All routes are mounted under `/api/v1`.
 | `GET` | `/applications/:applicationId` | — | Get single application |
 | `GET` | `/applications/job/:jobId` | recruiter | List applications for a job |
 | `PATCH` | `/applications/:applicationId/status` | recruiter | Update application status |
+| `POST` | `/sourcing/bulk-import` | recruiter | Scenario 2: Import candidates via CSV/Excel |
+| `POST` | `/sourcing/batch-upload-cvs` | recruiter | Scenario 2: Upload multiple PDF CVs for a job |
+| `GET` | `/sourcing/template` | recruiter | Download CSV template for bulk import |
 
 Screening routes are nested under `/jobs/:jobId` with `mergeParams` enabled so handlers have access to `:jobId` directly.
 
@@ -133,6 +179,75 @@ Screening results produced under this fallback include `"ai_unavailable": true` 
 
 - An applicant can apply to multiple jobs, but **cannot apply to the same job more than once**.
 - Attempting a duplicate application to the same job returns a `400` error: `"You have already applied to this job"`.
+
+---
+
+### Sourcing & Scenario 2 (External Applicants)
+
+The Sourcing module enables recruiters to bring in candidates from external sources (job boards, spreadsheets, or folders of resumes).
+
+1. **`POST /sourcing/bulk-import`** — Upload a CSV/Excel file. You must provide a `columnMappingJson` to map your spreadsheet headers to our system fields. If the spreadsheet contains `Resume URL` links, the system will automatically fetch them, parse the content using Gemini, and link the candidate to the job.
+2. **`POST /sourcing/batch-upload-cvs`** — Upload up to 50 PDF resumes directly. Gemini parses each resume to identify the candidate's email and details. If the candidate already exists, their profile is updated; otherwise, a new "imported" profile is created. All candidates are automatically applied to the target `jobId`.
+
+### Gemini AI Implementation Details
+
+The backend uses the `@google/generative-ai` SDK with the following hardening:
+- **Structured Output**: AI responses are strictly validated against JSON schemas.
+- **Rate Limit Management**: Built-in exponential backoff retries for `429` (Rate Limit) errors.
+- **Fail-Safe Screening**: If AI is temporarily unavailable during scoring, a deterministic rule-based engine provides a fallback score to ensure recruiters never see empty dashboards.
+
+### AI Decision & Scoring Flow
+
+```mermaid
+sequenceDiagram
+    participant R as Recruiter
+    participant A as API Server
+    participant G as Gemini SDK
+    participant S as Scorer
+
+    R->>A: Trigger Screening (/screen)
+    A->>A: Fetch Job & Applicants
+    loop For each Applicant
+        A->>G: Request structured summary (Resume + Job)
+        G-->>A: Return JSON (Strengths/Gaps)
+        A->>S: Run Weighted Scoring Calculation
+        S-->>A: Return Numerical Score (0-100)
+    end
+    A-->>R: Return Ranked Shortlist
+```
+
+### Assumptions & Limitations
+
+- **File Format**: The system currently assumes PDF format for all resume uploads.
+- **Batch Limits**: Batch PDF uploads are limited to 50 files per request to ensure stability and avoid timeouts.
+- **Gemini Rate Limits**: While exponential backoff is implemented, extremely high concurrent throughput may still hit Google's quota limits.
+- **Data Privacy**: CVs are stored on Cloudinary. Ensure your API keys are restricted to your specific domains.
+- **Scoring Weights**: Final scores are only as accurate as the weights defined in the `scoring_config`. If weights are missing, the system defaults to equal distribution.
+
+---
+
+## Troubleshooting Guide
+
+### 1. Gemini AI Rate Limits (429 Errors)
+If you see "Rate Limit Hit" in the logs, the system will automatically retry 3 times with exponential backoff. If it still fails, ensure your `GEMINI_API_KEY` is valid and has sufficient quota. For high-volume screening, consider upgrading to a paid tier or spreading the load.
+
+### 2. PDF Parsing Failures
+If a CV fails to parse:
+- Ensure the file is a valid PDF (not an image or corrupted file).
+- Check if the PDF is password-protected or encrypted (not supported).
+- Look for "Invalid or empty PDF content" in logs, which indicates the PDF might be a scan without OCR text.
+
+### 3. Sourcing Import Mismatches
+If a bulk import fails to create candidates:
+- Verify your `columnMappingJson` matches the exact headers in your CSV/Excel.
+- Ensure the `email` column is present or the CV text clearly contains an email address.
+- Check that the `jobId` provided exists and is owned by your recruiter account.
+
+### 4. Authentication Issues
+- Ensure `JWT_SECRET` is consistent across all instances of the API.
+- If tokens expire too quickly, check the system time on your server.
+
+---
 
 ## Manual Verification Scripts
 To verify the AI job parsing service with a live network call:

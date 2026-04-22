@@ -5,6 +5,7 @@ import type { ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
 import type { FormatsPlugin } from "ajv-formats";
 import type { JobJSON } from "@/modules/job/job.types.js";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 // Load schemas and prompts
 const jobJsonSchema = JSON.parse(readFileSync(new URL("../job/job.schema.json", import.meta.url), "utf-8"));
@@ -17,6 +18,7 @@ export abstract class BaseAIService<T> {
     private readonly validator: ValidateFunction<T>;
     private readonly apiKey: string;
     private readonly responseSchema: any;
+    private readonly genAI: GoogleGenerativeAI;
     protected abstract readonly modelName: string;
     protected abstract readonly systemPrompt: string;
 
@@ -24,6 +26,7 @@ export abstract class BaseAIService<T> {
         const key = apiKey || process.env.GEMINI_API_KEY;
         if (!key) throw new Error("GEMINI_API_KEY is not set in environment variables");
         this.apiKey = key;
+        this.genAI = new GoogleGenerativeAI(this.apiKey);
 
         this.ajv = new Ajv({ 
             allErrors: true, 
@@ -44,16 +47,16 @@ export abstract class BaseAIService<T> {
             if (Array.isArray(schema.type)) {
                 const nonNullType = schema.type.find((t: string) => t !== "null");
                 if (nonNullType) {
-                    geminiNode.type = nonNullType.toUpperCase();
+                    geminiNode.type = nonNullType.toUpperCase() as SchemaType;
                     geminiNode.nullable = true;
                 }
             } else {
-                geminiNode.type = schema.type.toUpperCase();
+                geminiNode.type = schema.type.toUpperCase() as SchemaType;
             }
         }
 
         if (schema.enum) {
-            geminiNode.type = "STRING";  // Force STRING type for enum compatibility
+            geminiNode.type = SchemaType.STRING;  // Force STRING type for enum compatibility
             geminiNode.enum = schema.enum.map((val: any) => {
                 // Convert all enum values to strings for Gemini API
                 return typeof val === 'number' ? String(val) : val;
@@ -84,40 +87,35 @@ export abstract class BaseAIService<T> {
         return text.trim();
     }
 
-
-
-    protected async callAI(input: string): Promise<T | null> {
+    protected async callAI(input: string, retryCount = 0): Promise<T | null> {
         const prompt = `${this.systemPrompt}\nInput:\n"""\n${input}\n"""`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent`;
+        const model = this.genAI.getGenerativeModel({
+            model: this.modelName,
+            generationConfig: {
+                temperature: 0,
+                topP: 0.1,
+                topK: 40,
+                maxOutputTokens: 8192,
+                responseMimeType: "application/json",
+                responseSchema: this.responseSchema,
+            }
+        });
+
+        // 60-second timeout to prevent background workers from hanging indefinitely
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("AI_REQUEST_TIMEOUT")), 60000)
+        );
 
         try {
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": this.apiKey
-                },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0,
-                        topP: 0.1,
-                        topK: 40,
-                        maxOutputTokens: 8192,
-                        responseMimeType: "application/json",
-                        responseSchema: this.responseSchema
-                    },
+            const result = await Promise.race([
+                model.generateContent({
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
                 }),
-                signal: AbortSignal.timeout(20000),
-            });
+                timeoutPromise
+            ]) as any;
 
-            const data: any = await response.json();
-            if (!response.ok) {
-                console.error(`AI API Error (${this.modelName}):`, JSON.stringify(data, null, 2));
-                return null;
-            }
-
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const response = await result.response;
+            const text = response.text();
             if (!text) return null;
 
             const cleanedText = this.extractJSON(text);
@@ -137,7 +135,20 @@ export abstract class BaseAIService<T> {
 
             return parsed;
         } catch (err: any) {
-            console.error(`AI Service Error (${this.modelName}):`, err.name === "AbortError" ? "Timeout" : err.message);
+            const isTimeout = err.message === "AI_REQUEST_TIMEOUT";
+            const isRateLimit = err.message?.includes("429") || err.status === 429;
+
+            // Handle Retriable Failures (Rate Limits or Timeouts)
+            if (isRateLimit || isTimeout) {
+                if (retryCount < 3) {
+                    const delayMs = Math.pow(2, retryCount) * 2000;
+                    console.warn(`AI ${isTimeout ? "Timeout" : "Rate Limit"} hit. Retrying in ${delayMs}ms... (Attempt ${retryCount + 1}/3)`);
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    return this.callAI(input, retryCount + 1);
+                }
+            }
+
+            console.error(`AI Service Error (${this.modelName}):`, err.message);
             return null;
         }
     }

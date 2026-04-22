@@ -26,6 +26,18 @@ export class ScreeningService {
     }
 
     /**
+     * Verify that the job exists and belongs to the specified recruiter.
+     * Throws ForbiddenError if validation fails.
+     */
+    async validateOwnership(jobId: string, recruiterId: string): Promise<any> {
+        const job = await this.screeningRepo.findJob(jobId);
+        if (!job || job.recruiterId !== recruiterId) {
+            throw new ForbiddenError("Job not found or you do not have permission to access it");
+        }
+        return job;
+    }
+
+    /**
      * The main screening orchestration pipeline:
      *   1. Fetch job & applications
      *   2. Batch call Gemini AI
@@ -39,10 +51,7 @@ export class ScreeningService {
             logger.info(`ScreeningService: Starting screening run for job ${jobId.substring(0, 5)}...`);
 
             // 1. Fetch the job - need scoring config and weights
-            const job = await this.screeningRepo.findJob(jobId);
-            if (!job || job.recruiterId !== recruiterId) {
-                throw new ForbiddenError("Job not found or you do not have permission to screen it");
-            }
+            const job = await this.validateOwnership(jobId, recruiterId);
 
             // 2. Fetch all eligible applications
             const applications = await this.screeningRepo.findEligibleApplications(jobId);
@@ -120,10 +129,7 @@ export class ScreeningService {
      * Fetch the persisted shortlist for a job.
      */
     async getShortlist(jobId: string, recruiterId: string, limit: number = 10): Promise<ShortlistEntry[]> {
-        const job = await this.screeningRepo.findJob(jobId);
-        if (!job || job.recruiterId !== recruiterId) {
-            throw new ForbiddenError("Job not found or you do not have permission to view this shortlist");
-        }
+        await this.validateOwnership(jobId, recruiterId);
 
         const applications = await this.screeningRepo.findShortlist(jobId, limit);
 
