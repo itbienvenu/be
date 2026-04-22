@@ -32,7 +32,7 @@ export class ScreeningRepository {
     }
 
     /**
-     * Fetch all applications eligible for screening (status: pending or reviewed)
+     * Fetch all applications eligible for screening (status: pending, reviewed, shortlisted, or rejected)
      * for a given job, joined with the applicant's profile.
      *
      * Uses a $lookup aggregation so we get the full applicant profile in one query

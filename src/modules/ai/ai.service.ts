@@ -6,6 +6,7 @@ import addFormats from "ajv-formats";
 import type { FormatsPlugin } from "ajv-formats";
 import type { JobJSON } from "@/modules/job/job.types.js";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import logger from "@/shared/utils/logger.js";
 
 // Load schemas and prompts
 const jobJsonSchema = JSON.parse(readFileSync(new URL("../job/job.schema.json", import.meta.url), "utf-8"));
@@ -125,14 +126,22 @@ export abstract class BaseAIService<T> {
             try {
                 parsed = JSON.parse(cleanedText);
             } catch (jsonErr: any) {
-                console.error("AI JSON Parse Error:", jsonErr.message);
+                logger.error("AI JSON Parse Error", { 
+                    error: jsonErr.message, 
+                    model: this.modelName,
+                    // Truncate to avoid logging full PII if parsing fails mid-way
+                    snippet: cleanedText.substring(0, 100) + "..." 
+                });
                 return null;
             }
 
             const valid = this.validator(parsed);
             if (!valid) {
-                console.error(`AI Validation Errors (${this.modelName}):`, JSON.stringify(this.validator.errors, null, 2));
-                console.error("Raw AI Response that failed validation:", cleanedText);
+                logger.error(`AI Validation Errors (${this.modelName})`, {
+                    errors: this.validator.errors,
+                    // PII-Safe: Only log a small prefix to help debug structural issues
+                    responsePrefix: cleanedText.substring(0, 100) + "..."
+                });
                 return null;
             }
 
@@ -145,13 +154,17 @@ export abstract class BaseAIService<T> {
             if (isRateLimit || isTimeout) {
                 if (retryCount < 3) {
                     const delayMs = Math.pow(2, retryCount) * 2000;
-                    console.warn(`AI ${isTimeout ? "Timeout" : "Rate Limit"} hit. Retrying in ${delayMs}ms... (Attempt ${retryCount + 1}/3)`);
+                    logger.warn(`AI ${isTimeout ? "Timeout" : "Rate Limit"} hit. Retrying...`, {
+                        attempt: retryCount + 1,
+                        delayMs,
+                        model: this.modelName
+                    });
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     return this.callAI(input, retryCount + 1);
                 }
             }
 
-            console.error(`AI Service Error (${this.modelName}):`, err.message);
+            logger.error(`AI Service Error (${this.modelName})`, { error: err.message });
             return null;
         }
     }

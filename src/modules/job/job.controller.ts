@@ -46,6 +46,13 @@ export class JobController {
             if (typeof description !== "string" || !description.trim()) {
                 return res.status(400).json({ success: false, message: "Job description is required" });
             }
+
+            if (description.length > 10000) {
+                return res.status(413).json({ 
+                    success: false, 
+                    message: "Job description is too long (max 10,000 characters)" 
+                });
+            }
             const structuredJob = await this.jobAIService.generateStructuredJob(description.trim());
 
             if (!structuredJob) {
@@ -71,6 +78,13 @@ export class JobController {
             const { description } = req.body;
             if (typeof description !== "string" || !description.trim()) {
                 return res.status(400).json({ success: false, message: "Simple job description is required" });
+            }
+
+            if (description.length > 5000) {
+                return res.status(413).json({ 
+                    success: false, 
+                    message: "Input notes are too long (max 5,000 characters)" 
+                });
             }
 
             const result = await this.jobGeneratorAIService.generateFullDescription(description.trim());

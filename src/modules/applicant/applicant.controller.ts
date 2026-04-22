@@ -25,7 +25,7 @@ export class ApplicantController {
             });
         } catch (error: any) {
             logger.error("UPLOAD_CV_ERROR", error);
-            res.status(500).json({ success: false, message: error.message || "Internal server error" });
+            res.status(500).json({ success: false, message: "Failed to process CV. Please ensure the file is a valid PDF and try again." });
         }
     }
 
@@ -69,9 +69,10 @@ export class ApplicantController {
 
             res.status(200).json({ success: true, message: "Profile updated successfully" });
         } catch (error: any) {
-            logger.error("PATCH_PROFILE_ERROR", error.message);
-            const status = error.message === "Profile not found" ? 404 : 500;
-            res.status(status).json({ success: false, message: error.message });
+            logger.error("PATCH_PROFILE_ERROR", error);
+            const status = error.message === "Profile not found" ? 404 : 400;
+            const message = status === 404 ? "Profile not found" : "Failed to update profile. Please check your input.";
+            res.status(status).json({ success: false, message });
         }
     }
 
@@ -99,8 +100,8 @@ export class ApplicantController {
                 data: result
             });
         } catch (error: any) {
-            logger.error("GENERATE_COVER_LETTER_ERROR", error.message);
-            res.status(500).json({ success: false, message: error.message || "Internal server error" });
+            logger.error("GENERATE_COVER_LETTER_ERROR", error);
+            res.status(500).json({ success: false, message: "Failed to generate cover letter. Please try again later." });
         }
     }
 }

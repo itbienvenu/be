@@ -24,11 +24,11 @@ export const jobSchemas = {
         type: "object",
         required: ["name", "category", "required", "weight", "level"],
         properties: {
-            name:     { type: "string", example: "Python" },
+            name: { type: "string", example: "Python" },
             category: { type: "string", example: "programming_language" },
             required: { type: "boolean", description: "Whether this skill is mandatory for the role", example: true },
-            weight:   { type: "number", minimum: 0, maximum: 1, description: "Importance weight used in scoring (0–1)", example: 0.18 },
-            level:    { type: "string", enum: ["basic", "intermediate", "advanced"], example: "advanced" }
+            weight: { type: "number", minimum: 0, maximum: 1, description: "Importance weight used in scoring (0–1)", example: 0.18 },
+            level: { type: "string", enum: ["basic", "intermediate", "advanced"], example: "advanced" }
         }
     },
 
@@ -36,7 +36,7 @@ export const jobSchemas = {
         type: "object",
         required: ["name"],
         properties: {
-            name:   { type: "string", example: "communication" },
+            name: { type: "string", example: "communication" },
             weight: { type: "number", minimum: 0, maximum: 1, description: "Importance weight (optional, defaults to equal weight)", example: 0.05 }
         }
     },
@@ -45,7 +45,7 @@ export const jobSchemas = {
         type: "object",
         required: ["name", "required"],
         properties: {
-            name:     { type: "string", example: "Git" },
+            name: { type: "string", example: "Git" },
             required: { type: "boolean", example: true }
         }
     },
@@ -60,10 +60,10 @@ export const jobSchemas = {
                 required: ["skills", "experience", "education", "resources", "soft_skills"],
                 description: "Category weights for the weighted average scoring model. Must sum to 1.0.",
                 properties: {
-                    skills:      { type: "number", minimum: 0, maximum: 1, example: 0.5 },
-                    experience:  { type: "number", minimum: 0, maximum: 1, example: 0.25 },
-                    education:   { type: "number", minimum: 0, maximum: 1, example: 0.1 },
-                    resources:   { type: "number", minimum: 0, maximum: 1, example: 0.05 },
+                    skills: { type: "number", minimum: 0, maximum: 1, example: 0.5 },
+                    experience: { type: "number", minimum: 0, maximum: 1, example: 0.25 },
+                    education: { type: "number", minimum: 0, maximum: 1, example: 0.1 },
+                    resources: { type: "number", minimum: 0, maximum: 1, example: 0.05 },
                     soft_skills: { type: "number", minimum: 0, maximum: 1, example: 0.1 }
                 }
             },
@@ -91,21 +91,21 @@ export const jobSchemas = {
         type: "object",
         required: ["_id", "title", "company", "description", "domain", "metadata"],
         properties: {
-            _id:              { type: "string", example: "661f1b2c3d4e5f6a7b8c9d0e" },
-            title:            { type: "string", example: "Software Tools Engineer" },
-            employment_type:  { type: "string", enum: ["full_time", "part_time", "contract", "temporary", "internship"], example: "full_time" },
-            seniority_level:  { type: "string", enum: ["junior", "mid", "senior", "lead", "manager", "director"], example: "mid" },
+            _id: { type: "string", example: "661f1b2c3d4e5f6a7b8c9d0e" },
+            title: { type: "string", example: "Software Tools Engineer" },
+            employment_type: { type: "string", enum: ["full_time", "part_time", "contract", "temporary", "internship"], example: "full_time" },
+            seniority_level: { type: "string", enum: ["junior", "mid", "senior", "lead", "manager", "director"], example: "mid" },
             company: {
                 type: "object",
                 properties: {
-                    name:     { type: "string", example: "Zipline" },
+                    name: { type: "string", example: "Zipline" },
                     location: { type: "object", properties: { city: { type: "string", example: "Kigali" }, country: { type: "string", example: "Rwanda" } } }
                 }
             },
             description: {
                 type: "object",
                 properties: {
-                    raw:     { type: "string", description: "Full original job description text" },
+                    raw: { type: "string", description: "Full original job description text" },
                     summary: { type: "string", description: "AI-generated concise summary (optional)", example: "Build and maintain internal annotation tools for ML workflows." }
                 }
             },
@@ -118,7 +118,7 @@ export const jobSchemas = {
                         properties: {
                             min_years: { type: "number", example: 3 },
                             max_years: { type: "number", nullable: true, example: null },
-                            roles:     { type: "array", items: { type: "string" } }
+                            roles: { type: "array", items: { type: "string" } }
                         }
                     },
                     education: {
@@ -126,7 +126,7 @@ export const jobSchemas = {
                         items: {
                             type: "object",
                             properties: {
-                                level:  { type: "string", example: "bachelor" },
+                                level: { type: "string", example: "bachelor" },
                                 fields: { type: "array", items: { type: "string" }, example: ["Computer Science"] }
                             }
                         }
@@ -140,10 +140,10 @@ export const jobSchemas = {
                 items: {
                     type: "object",
                     properties: {
-                        name:     { type: "string", example: "Python" },
+                        name: { type: "string", example: "Python" },
                         category: { type: "string", example: "programming_language" },
                         required: { type: "boolean", example: true },
-                        level:    { type: "string", example: "advanced" }
+                        level: { type: "string", example: "advanced" }
                     }
                 }
             },
@@ -156,24 +156,24 @@ export const jobSchemas = {
                     }
                 }
             },
-            resources:        { type: "array", items: { $ref: "#/components/schemas/JobResource" } },
+            resources: { type: "array", items: { $ref: "#/components/schemas/JobResource" } },
             domain: {
                 type: "object",
                 properties: {
-                    primary:   { type: "string", example: "internal_tools" },
+                    primary: { type: "string", example: "internal_tools" },
                     secondary: { type: "array", items: { type: "string" }, example: ["machine_learning"] }
                 }
             },
             responsibilities: { type: "array", items: { type: "string" }, example: ["Build annotation tools"] },
-            languages:        { type: "array", items: { type: "string" }, example: ["English"] },
-            travel_required:  { type: "boolean", nullable: true, example: false },
+            languages: { type: "array", items: { type: "string" }, example: ["English"] },
+            travel_required: { type: "boolean", nullable: true, example: false },
             metadata: {
                 type: "object",
                 properties: {
-                    status:     { type: "string", enum: ["draft", "published", "archived"], example: "published" },
+                    status: { type: "string", enum: ["draft", "published", "archived"], example: "published" },
                     created_at: { type: "string", format: "date-time" },
                     updated_at: { type: "string", format: "date-time" },
-                    source:     { type: "string", example: "ai_structured" }
+                    source: { type: "string", example: "ai_structured" }
                 }
             }
         }
@@ -235,19 +235,19 @@ export const jobSchemas = {
             "source is set to 'manual_entry', and status is always 'draft'. recruiterId is also set server-side from the authenticated user. " +
             "Validation errors are returned as a detailed array for frontend integration.",
         properties: {
-            title:            { type: "string", example: "Senior React Developer" },
-            employment_type:  { type: "string", enum: ["full_time", "part_time", "contract", "temporary", "internship"], example: "full_time" },
-            seniority_level:  { type: "string", enum: ["junior", "mid", "senior", "lead", "manager", "director"], example: "senior" },
+            title: { type: "string", example: "Senior React Developer" },
+            employment_type: { type: "string", enum: ["full_time", "part_time", "contract", "temporary", "internship"], example: "full_time" },
+            seniority_level: { type: "string", enum: ["junior", "mid", "senior", "lead", "manager", "director"], example: "senior" },
             company: {
                 type: "object",
                 required: ["name", "location"],
                 properties: {
-                    name:     { type: "string", example: "TechCorp" },
+                    name: { type: "string", example: "TechCorp" },
                     location: {
                         type: "object",
                         required: ["city", "country"],
                         properties: {
-                            city:    { type: "string", example: "Kigali" },
+                            city: { type: "string", example: "Kigali" },
                             country: { type: "string", example: "Rwanda" }
                         }
                     }
@@ -257,7 +257,7 @@ export const jobSchemas = {
                 type: "object",
                 required: ["raw"],
                 properties: {
-                    raw:     { type: "string", example: "Build and maintain scalable web applications using React..." },
+                    raw: { type: "string", example: "Build and maintain scalable web applications using React..." },
                     summary: { type: "string", example: "Develop modern frontend solutions" }
                 }
             },
@@ -277,7 +277,7 @@ export const jobSchemas = {
                         items: {
                             type: "object",
                             properties: {
-                                level:  { type: "string", example: "bachelor" },
+                                level: { type: "string", example: "bachelor" },
                                 fields: { type: "array", items: { type: "string" }, example: ["Computer Science"] }
                             }
                         }
@@ -293,20 +293,20 @@ export const jobSchemas = {
                     { name: "TypeScript", category: "programming_language", required: true, weight: 0.2, level: "advanced" }
                 ]
             },
-            resources:        { type: "array", items: { $ref: "#/components/schemas/JobResource" } },
-            soft_skills:      { type: "array", items: { $ref: "#/components/schemas/JobSoftSkill" } },
+            resources: { type: "array", items: { $ref: "#/components/schemas/JobResource" } },
+            soft_skills: { type: "array", items: { $ref: "#/components/schemas/JobSoftSkill" } },
             domain: {
                 type: "object",
                 required: ["primary"],
                 properties: {
-                    primary:   { type: "string", example: "Technology" },
+                    primary: { type: "string", example: "Technology" },
                     secondary: { type: "array", items: { type: "string" }, example: ["Software Development"] }
                 }
             },
             responsibilities: { type: "array", items: { type: "string" } },
-            languages:        { type: "array", items: { type: "string" }, example: ["English"] },
-            travel_required:  { type: "boolean", nullable: true, example: false },
-            scoring_config:   { $ref: "#/components/schemas/JobScoringConfig" }
+            languages: { type: "array", items: { type: "string" }, example: ["English"] },
+            travel_required: { type: "boolean", nullable: true, example: false },
+            scoring_config: { $ref: "#/components/schemas/JobScoringConfig" }
         }
     },
 
@@ -317,18 +317,18 @@ export const jobSchemas = {
             "Sensitive fields (scoring_config, recruiterId, metadata.status) are blocked. " +
             "Job must be in `draft` status to be editable.",
         properties: {
-            title:            { type: "string", example: "Senior Software Tools Engineer" },
-            employment_type:  { type: "string", enum: ["full_time", "part_time", "contract", "temporary", "internship"] },
-            seniority_level:  { type: "string", enum: ["junior", "mid", "senior", "lead", "manager", "director"] },
-            description:      { type: "object", properties: { raw: { type: "string" }, summary: { type: "string" } } },
-            skills:           { type: "array", items: { $ref: "#/components/schemas/JobSkill" } },
-            soft_skills:      { type: "array", items: { $ref: "#/components/schemas/JobSoftSkill" } },
-            resources:        { type: "array", items: { $ref: "#/components/schemas/JobResource" } },
+            title: { type: "string", example: "Senior Software Tools Engineer" },
+            employment_type: { type: "string", enum: ["full_time", "part_time", "contract", "temporary", "internship"] },
+            seniority_level: { type: "string", enum: ["junior", "mid", "senior", "lead", "manager", "director"] },
+            description: { type: "object", properties: { raw: { type: "string" }, summary: { type: "string" } } },
+            skills: { type: "array", items: { $ref: "#/components/schemas/JobSkill" } },
+            soft_skills: { type: "array", items: { $ref: "#/components/schemas/JobSoftSkill" } },
+            resources: { type: "array", items: { $ref: "#/components/schemas/JobResource" } },
             responsibilities: { type: "array", items: { type: "string" } },
-            requirements:     { type: "object" },
-            domain:           { type: "object" },
-            languages:        { type: "array", items: { type: "string" } },
-            travel_required:  { type: "boolean", nullable: true }
+            requirements: { type: "object" },
+            domain: { type: "object" },
+            languages: { type: "array", items: { type: "string" } },
+            travel_required: { type: "boolean", nullable: true }
         }
     },
 

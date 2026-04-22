@@ -1,4 +1,3 @@
-import { PDFParse } from "pdf-parse";
 import { v2 as cloudinary } from "cloudinary";
 import { ServiceError } from "./custom-errors.js";
 import dotenv from "dotenv";
@@ -6,12 +5,14 @@ import logger from "@/shared/utils/logger.js";
 dotenv.config();
 
 
-interface UploadResponse {
+export interface UploadResponse {
     url: string;
     publicId: string;
 }
 
 export class PDFTool {
+    private static pdfModule: any = null;
+
     constructor() {
         cloudinary.config({
             cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
@@ -26,7 +27,7 @@ export class PDFTool {
      * @param filename Optional original filename to help Cloudinary identify the file type
      * @returns URL and Public ID of the uploaded PDF
      */
-    async uploadToCloudinary(fileBuffer: Buffer, filename?: string): Promise<{ url: string; publicId: string }> {
+    async uploadToCloudinary(fileBuffer: Buffer, filename?: string): Promise<UploadResponse> {
         return new Promise((resolve, reject) => {
             const uploadOptions: any = {
                 folder: "cvs",
@@ -89,8 +90,11 @@ export class PDFTool {
      */
     async readPdfFromBuffer(buffer: Buffer): Promise<string> {
         try {
-            // Dynamic import to handle both v1 and v2 pdf-parse versions and CJS/ESM interop
-            const pdfModule: any = await import("pdf-parse");
+            // Dynamic import once and cache to avoid async overhead on every call
+            if (!PDFTool.pdfModule) {
+                PDFTool.pdfModule = await import("pdf-parse");
+            }
+            const pdfModule = PDFTool.pdfModule;
 
             let text = "";
 

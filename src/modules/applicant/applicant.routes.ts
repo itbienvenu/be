@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { ApplicantController } from "./applicant.controller.js";
 import { authMiddleware } from "@/shared/middleware/auth.middleware.js";
+import { aiGenerationRateLimiter } from "@/shared/middleware/rate-limit.middleware.js";
 import multer from "multer";
 
 const upload = multer({
@@ -29,9 +30,11 @@ export class ApplicantRoutes {
 
     private initializeRoutes() {
         // Step 1: Upload CV and get extracted JSON for review
+        // Rate limited to 5 requests per minute due to AI parsing cost
         this.router.post(
             "/upload-cv",
             authMiddleware,
+            aiGenerationRateLimiter,
             upload.single("cv"),
             (req, res) => this.applicantController.uploadCV(req, res)
         );
@@ -58,9 +61,11 @@ export class ApplicantRoutes {
         );
 
         // AI-Powered Cover Letter Generation
+        // Rate limited to 5 requests per minute due to AI generation cost
         this.router.post(
             "/generate-cover-letter/:jobId",
             authMiddleware,
+            aiGenerationRateLimiter,
             upload.single("cvFile"),
             (req, res) => this.applicantController.generateCoverLetter(req, res)
         );

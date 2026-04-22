@@ -26,7 +26,7 @@ You are a specialized talent acquisition AI. Your task is to extract candidate d
 
 2. Dates: Use "YYYY-MM" format (or "YYYY-MM-DD"). Years: Use integer YYYY.
 3. Required Fields: If data is missing for a mandatory field, use empty strings or arrays.
-   - **CRITICAL - Email**: If email is missing, use 'notfound@umurava.africa' to pass validation.
+   - **CRITICAL - Email**: If email is missing, use 'notfound@example.com' to pass validation.
    - **CRITICAL - Education Years**: If Start/End Year is missing, use 1970 (integer).
    - **CRITICAL - Experience Dates**: If Start Date is missing, use '1970-01'.
 4. Optional Fields: If data is missing for optional fields (like socialLinks), omit the keys entirely.

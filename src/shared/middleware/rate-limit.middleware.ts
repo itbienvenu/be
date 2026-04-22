@@ -65,3 +65,9 @@ export function rateLimitMiddleware(windowMs: number = 60000, maxRequests: numbe
  * 10 requests per minute (60 seconds)
  */
 export const jobCreationRateLimiter = rateLimitMiddleware(60000, 10);
+
+/**
+ * Rate limiter specifically for AI generation endpoints
+ * 5 requests per minute (60 seconds)
+ */
+export const aiGenerationRateLimiter = rateLimitMiddleware(60000, 5);

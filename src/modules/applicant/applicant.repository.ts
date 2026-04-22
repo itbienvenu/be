@@ -64,11 +64,18 @@ export class ApplicantRepository {
                     if (currentProfile.cvPublicId) mergePayload.cvPublicId = currentProfile.cvPublicId;
                 }
 
-                await db.collection(this.collection).deleteOne({ userId: userObjectId });
+                // 1. Update the ghost profile first to become the main profile
                 await db.collection(this.collection).updateOne(
                     { _id: existingByEmail._id },
                     { $set: mergePayload }
                 );
+
+                // 2. Delete the redundant temporary record if it exists
+                // We exclude the record we just updated using its _id
+                await db.collection(this.collection).deleteOne({ 
+                    userId: userObjectId, 
+                    _id: { $ne: existingByEmail._id } 
+                });
             }
         }
 

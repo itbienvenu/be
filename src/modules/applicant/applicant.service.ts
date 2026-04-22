@@ -85,10 +85,10 @@ export class ApplicantService {
             "preferences", "area_of_expertise"
         ];
 
-        // 3. Process nested 'profile' object if it exists
+        // 3. Process nested 'profile' object if it exists (with whitelisting)
         if (data.profile && typeof data.profile === "object") {
             for (const [key, value] of Object.entries(data.profile)) {
-                if (value !== undefined) {
+                if (value !== undefined && profileFields.includes(key)) {
                     flatUpdate[`profile.${key}`] = value;
                 }
             }
@@ -135,10 +135,10 @@ export class ApplicantService {
             "preferences", "area_of_expertise"
         ];
 
-        // If the user sent a 'profile' object, process its keys
+        // If the user sent a 'profile' object, process its keys (with whitelisting)
         if (partial.profile && typeof partial.profile === "object") {
             for (const [key, value] of Object.entries(partial.profile)) {
-                if (value !== undefined) {
+                if (value !== undefined && profileFields.includes(key)) {
                     flatUpdate[`profile.${key}`] = value;
                 }
             }
