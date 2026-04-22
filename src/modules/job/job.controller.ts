@@ -2,6 +2,8 @@ import { JobService } from "./job.service.js";
 import { JobAIService } from "../ai/ai.service.js";
 import { type Request, type Response } from "express";
 import logger from "@/shared/utils/logger.js";
+import { validateJob } from "@/shared/utils/validator.js";
+import type { JobJSON, JobStatus } from "./job.types.js";
 
 
 export class JobController {
@@ -37,6 +39,110 @@ export class JobController {
         } catch (error: any) {
             logger.error("CREATE_JOB_ERROR", error);
             res.status(500).json({ success: false, message: "Failed to create job" });
+        }
+    }
+
+    /**
+     * Create a job with manually entered details (Hackathon Manual Entry)
+     * 
+     * Accepts structured job data from the frontend form and validates it against the Job schema.
+     * Automatically populates metadata (created_at, updated_at, status, source) with defaults.
+     * Validation errors are returned as a detailed array for precise frontend error handling.
+     * 
+     * **Process:**
+     * 1. Extract and validate user ID
+     * 2. Enrich job data with default metadata and recruiterId
+     * 3. Validate complete job object against schema
+     * 4. If valid, persist to database in draft status
+     * 5. If invalid, return detailed validation errors with field paths
+     * 
+     * @async
+     * @param {Request} req - Express request object containing job data in body
+     * @param {Response} res - Express response object
+     * @returns {void} JSON response with success status, created job data, or validation errors array
+     * 
+     * @example
+     * POST /jobs/manual-entry
+     * {
+     *   "title": "Senior React Developer",
+     *   "company": { "name": "TechCorp", "location": { "city": "Kigali", "country": "Rwanda" } },
+     *   "employment_type": "full_time",
+     *   "seniority_level": "senior",
+     *   "description": { "raw": "Build web apps...", "summary": "Frontend development" },
+     *   "requirements": { "experience": { "min_years": 3 }, "education": [...] },
+     *   "skills": [...],
+     *   "domain": { "primary": "Technology" },
+     *   "scoring_config": { "weights": {...}, "rules": {...} }
+     * }
+     * 
+     * @response 201 - Job created successfully with default metadata and draft status
+     * @response 422 - Validation failed with detailed error array
+     * @response 401 - Unauthorized (missing user ID / recruiter role)
+     * @response 500 - Server error
+     */
+    async createJobManually(req: Request, res: Response) {
+        try {
+            const userId = (req as any).user?._id;
+            if (!userId) {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: "Unauthorized: Missing user ID" 
+                });
+            }
+
+            const now = new Date().toISOString();
+            const jobData: JobJSON = req.body;
+
+            // Destructure to exclude any metadata from the input (if provided)
+            // We always generate fresh metadata server-side for security and consistency
+            const { metadata: _ignoredMetadata, recruiterId: _ignoredRecruiter, ...safeJobData } = jobData;
+
+            // Enrich job data with recruiter ID and complete metadata BEFORE validation
+            // This ensures the full object matches the schema requirements
+            const enrichedJobData = {
+                ...safeJobData,
+                recruiterId: userId,
+                metadata: {
+                    created_at: now,
+                    updated_at: now,
+                    status: "draft" as JobStatus,  // Always start as draft
+                    source: "manual_entry"  // Identifies this as manually entered
+                }
+            };
+
+            // Validate enriched job data against job schema
+            const { isValid, errors } = validateJob(enrichedJobData);
+
+            if (!isValid || errors) {
+                // Format validation errors as detailed array for frontend processing
+                const formattedErrors = (errors || []).map((error: any) => ({
+                    field: error.instancePath || "root",
+                    message: error.message,
+                    keyword: error.keyword,
+                    schemaPath: error.schemaPath
+                }));
+
+                return res.status(422).json({
+                    success: false,
+                    message: "Validation failed. Please check the errors below.",
+                    errors: formattedErrors
+                });
+            }
+
+            // Persist validated job to database
+            const result = await this.jobService.createJob(enrichedJobData);
+            
+            res.status(201).json({
+                success: true,
+                message: "Job created successfully in draft status",
+                data: result.data
+            });
+        } catch (error: any) {
+            logger.error("CREATE_JOB_MANUALLY_ERROR", error);
+            res.status(500).json({ 
+                success: false, 
+                message: error.message || "Failed to create job" 
+            });
         }
     }
 

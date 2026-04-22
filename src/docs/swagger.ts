@@ -17,6 +17,7 @@ import { jobSchemas, jobPaths } from "./jobs.docs.js";
 import { applicantSchemas, applicantPaths } from "./applicants.docs.js";
 import { applicationSchemas, applicationPaths } from "./applications.docs.js";
 import { screeningSchemas, screeningPaths } from "./screening.docs.js";
+import { sourcingSchemas, sourcingPaths } from "./sourcing.docs.js";
 
 const options: swaggerJsdoc.Options = {
     definition: {
@@ -78,6 +79,7 @@ const options: swaggerJsdoc.Options = {
                 ...applicantSchemas,
                 ...applicationSchemas,
                 ...screeningSchemas,
+                ...sourcingSchemas,
             },
             responses: {
                 Unauthorized: {
@@ -126,6 +128,7 @@ const options: swaggerJsdoc.Options = {
             ...applicantPaths,
             ...applicationPaths,
             ...screeningPaths,
+            ...sourcingPaths,
         },
         tags: [
             { name: "Auth",        description: "Registration and login" },
@@ -133,7 +136,8 @@ const options: swaggerJsdoc.Options = {
             { name: "Jobs",        description: "Job posting, editing, and publishing" },
             { name: "Applicants",  description: "Applicant profile and CV management" },
             { name: "Applications",description: "Job applications submitted by applicants" },
-            { name: "Screening",   description: "AI-powered candidate screening and ranked shortlists" }
+            { name: "Screening",   description: "AI-powered candidate screening and ranked shortlists" },
+            { name: "Sourcing",    description: "Recruiter candidate sourcing and bulk management" }
         ]
     },
     // No file scanning — all docs are imported explicitly above

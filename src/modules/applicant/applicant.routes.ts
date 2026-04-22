@@ -56,6 +56,7 @@ export class ApplicantRoutes {
             authMiddleware,
             (req, res) => this.applicantController.patchProfile(req, res)
         );
+
     }
 }
 

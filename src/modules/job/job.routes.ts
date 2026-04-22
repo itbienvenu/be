@@ -1,6 +1,7 @@
 import JobController from "./job.controller.js";
 import { Router } from "express";
 import { AuthMiddleware } from "@/middlewares/auth.middleware.js";
+import { jobCreationRateLimiter } from "@/shared/middleware/rate-limit.middleware.js";
 
 export class JobRoutes {
     public router: Router;
@@ -40,6 +41,15 @@ export class JobRoutes {
 
         // Protected route for recruiters to post jobs
         this.router.post("/", this.authMiddleware.requireRole("recruiter"), (req, res) => this.jobController.createJob(req, res));
+
+        // Protected route for manual job entry (Hackathon Feature)
+        // Rate limited to 10 requests per minute to prevent spam
+        this.router.post(
+            "/manual-entry",
+            this.authMiddleware.requireRole("recruiter"),
+            jobCreationRateLimiter,
+            (req, res) => this.jobController.createJobManually(req, res)
+        );
 
         // Recruiter: patch (edit) a draft job
         this.router.patch(

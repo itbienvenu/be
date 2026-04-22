@@ -3,6 +3,7 @@
  *
  * Endpoints:
  *   POST   /api/v1/jobs                  — create job from raw description (AI-structured) [recruiter]
+ *   POST   /api/v1/jobs/manual-entry     — create job from fully structured form data (Hackathon feature) [recruiter, rate-limited]
  *   GET    /api/v1/jobs                  — list all published jobs [public]
  *   GET    /api/v1/jobs/my-jobs          — list recruiter's own jobs [recruiter]
  *   GET    /api/v1/jobs/recruiter/:id    — get full job details with scoring config [recruiter, owner]
@@ -11,6 +12,7 @@
  *   PATCH  /api/v1/jobs/:id/publish      — publish a draft job [recruiter, owner]
  *
  * Note: scoring_config and skill weights are hidden from public endpoints (Zero Trust).
+ *       The /manual-entry endpoint is rate-limited to 10 requests per minute per recruiter.
  */
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -216,6 +218,98 @@ export const jobSchemas = {
         }
     },
 
+    CreateJobManuallyRequest: {
+        type: "object",
+        required: [
+            "title",
+            "company",
+            "description",
+            "domain",
+            "scoring_config"
+        ],
+        description:
+            "Fully structured job data for manual entry (Hackathon feature). " +
+            "All required fields must be provided as they would appear in the final job document. " +
+            "**NOTE: Do NOT include metadata in the request.** Metadata (created_at, updated_at, source, status) " +
+            "is automatically populated server-side: created_at and updated_at are set to current time, " +
+            "source is set to 'manual_entry', and status is always 'draft'. recruiterId is also set server-side from the authenticated user. " +
+            "Validation errors are returned as a detailed array for frontend integration.",
+        properties: {
+            title:            { type: "string", example: "Senior React Developer" },
+            employment_type:  { type: "string", enum: ["full_time", "part_time", "contract", "temporary", "internship"], example: "full_time" },
+            seniority_level:  { type: "string", enum: ["junior", "mid", "senior", "lead", "manager", "director"], example: "senior" },
+            company: {
+                type: "object",
+                required: ["name", "location"],
+                properties: {
+                    name:     { type: "string", example: "TechCorp" },
+                    location: {
+                        type: "object",
+                        required: ["city", "country"],
+                        properties: {
+                            city:    { type: "string", example: "Kigali" },
+                            country: { type: "string", example: "Rwanda" }
+                        }
+                    }
+                }
+            },
+            description: {
+                type: "object",
+                required: ["raw"],
+                properties: {
+                    raw:     { type: "string", example: "Build and maintain scalable web applications using React..." },
+                    summary: { type: "string", example: "Develop modern frontend solutions" }
+                }
+            },
+            requirements: {
+                type: "object",
+                properties: {
+                    experience: {
+                        type: "object",
+                        properties: {
+                            min_years: { type: "number", example: 3 },
+                            max_years: { type: "number", nullable: true, example: null },
+                            roles: { type: "array", items: { type: "string" }, example: ["Frontend Engineer"] }
+                        }
+                    },
+                    education: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                level:  { type: "string", example: "bachelor" },
+                                fields: { type: "array", items: { type: "string" }, example: ["Computer Science"] }
+                            }
+                        }
+                    },
+                    certifications: { type: "array", items: { type: "string" } }
+                }
+            },
+            skills: {
+                type: "array",
+                items: { $ref: "#/components/schemas/JobSkill" },
+                example: [
+                    { name: "React", category: "frontend_framework", required: true, weight: 0.3, level: "advanced" },
+                    { name: "TypeScript", category: "programming_language", required: true, weight: 0.2, level: "advanced" }
+                ]
+            },
+            resources:        { type: "array", items: { $ref: "#/components/schemas/JobResource" } },
+            soft_skills:      { type: "array", items: { $ref: "#/components/schemas/JobSoftSkill" } },
+            domain: {
+                type: "object",
+                required: ["primary"],
+                properties: {
+                    primary:   { type: "string", example: "Technology" },
+                    secondary: { type: "array", items: { type: "string" }, example: ["Software Development"] }
+                }
+            },
+            responsibilities: { type: "array", items: { type: "string" } },
+            languages:        { type: "array", items: { type: "string" }, example: ["English"] },
+            travel_required:  { type: "boolean", nullable: true, example: false },
+            scoring_config:   { $ref: "#/components/schemas/JobScoringConfig" }
+        }
+    },
+
     PatchJobRequest: {
         type: "object",
         description:
@@ -296,18 +390,8 @@ export const jobPaths = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    data: {
-                                        type: "object",
-                                        properties: {
-                                            acknowledged: { type: "boolean", example: true },
-                                            insertedId:   { type: "string", example: "69e60b1290036afefcc801bf" }
-                                        }
-                                    }
+                                    data: { $ref: "#/components/schemas/JobFull" }
                                 }
-                            },
-                            example: {
-                                success: true,
-                                data: { acknowledged: true, insertedId: "69e60b1290036afefcc801bf" }
                             }
                         }
                     }
@@ -332,6 +416,121 @@ export const jobPaths = {
                 },
                 "401": { $ref: "#/components/responses/Unauthorized" },
                 "403": { $ref: "#/components/responses/Forbidden" },
+                "500": { $ref: "#/components/responses/InternalError" }
+            }
+        }
+    },
+
+    "/api/v1/jobs/manual-entry": {
+        post: {
+            tags: ["Jobs"],
+            summary: "Create job from fully structured form data (Hackathon Manual Entry)",
+            description:
+                "Creates a job with ALL fields manually entered via a form. " +
+                "No AI parsing — your data is validated directly against the Job schema. " +
+                "**Important:** Validation errors are returned as a detailed array, allowing the frontend " +
+                "to pinpoint exactly which field has an issue. " +
+                "The job is created in `draft` status automatically. " +
+                "\n\n**Rate limiting:** 10 requests per minute per recruiter (429 on excess). " +
+                "\n\n**Required role:** `recruiter`",
+            security: [{ BearerAuth: [] }],
+            requestBody: {
+                required: true,
+                content: {
+                    "application/json": {
+                        schema: { $ref: "#/components/schemas/CreateJobManuallyRequest" },
+                        example: {
+                            title: "Senior React Developer",
+                            employment_type: "full_time",
+                            seniority_level: "senior",
+                            company: {
+                                name: "TechCorp",
+                                location: { city: "Kigali", country: "Rwanda" }
+                            },
+                            description: {
+                                raw: "Build modern, scalable web applications using React and TypeScript...",
+                                summary: "Develop frontend solutions for our platform"
+                            },
+                            domain: { primary: "Technology", secondary: ["Software Development"] },
+                            skills: [
+                                { name: "React", category: "frontend_framework", required: true, weight: 0.3, level: "advanced" },
+                                { name: "TypeScript", category: "programming_language", required: true, weight: 0.2, level: "advanced" }
+                            ],
+                            scoring_config: {
+                                weights: {
+                                    skills: 0.4,
+                                    experience: 0.25,
+                                    education: 0.15,
+                                    resources: 0.1,
+                                    soft_skills: 0.1
+                                },
+                                rules: {
+                                    required_skills_must_match: true,
+                                    min_experience_required: true
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responses: {
+                "201": {
+                    description: "Job created successfully in draft status",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    success: { type: "boolean", example: true },
+                                    message: { type: "string", example: "Job created successfully in draft status" },
+                                    data: { $ref: "#/components/schemas/JobFull" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "401": { $ref: "#/components/responses/Unauthorized" },
+                "403": { $ref: "#/components/responses/Forbidden" },
+                "422": {
+                    description: "Unprocessable entity — validation failed (missing required fields, invalid types, constraint violations, etc.)",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            example: {
+                                success: false,
+                                message: "Validation failed. Please check the errors below.",
+                                errors: [
+                                    { field: "/title", message: "must be string", keyword: "type", schemaPath: "#/properties/title/type" }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "429": {
+                    description: "Too many requests — rate limit exceeded (10 per minute)",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    success: { type: "boolean", example: false },
+                                    message: { type: "string", example: "Too many requests. Please try again later." },
+                                    retryAfter: { type: "number", description: "Seconds to wait before retrying", example: 45 }
+                                }
+                            },
+                            example: {
+                                success: false,
+                                message: "Too many requests. Please try again later.",
+                                retryAfter: 45
+                            }
+                        }
+                    },
+                    headers: {
+                        "X-RateLimit-Limit": { schema: { type: "number", example: 10 }, description: "Maximum requests per window" },
+                        "X-RateLimit-Remaining": { schema: { type: "number", example: 0 }, description: "Requests remaining in current window" },
+                        "X-RateLimit-Reset": { schema: { type: "string", format: "date-time" }, description: "When the rate limit window resets" }
+                    }
+                },
                 "500": { $ref: "#/components/responses/InternalError" }
             }
         }

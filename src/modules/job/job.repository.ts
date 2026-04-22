@@ -23,7 +23,13 @@ export class JobRepository {
         }
 
         const job = await db.collection("jobs").insertOne(payload);
-        return { success: true, data: job };
+        return { 
+            success: true, 
+            data: {
+                _id: job.insertedId.toString(),
+                ...payload
+            }
+        };
     }
 
     async getAllJobs(isPublic: boolean = true) {

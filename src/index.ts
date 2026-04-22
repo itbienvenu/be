@@ -25,13 +25,24 @@ if (missing.length > 0) {
 
 const app = express();
 
-// CORS — allow all origins in non-production environments
-if (process.env.NODE_ENV !== "production") {
-    app.use(cors());
-    logger.warn("CORS: all origins allowed (development mode)");
-}
+// CORS — restrict origins in production, but allow all in development for ease of use.
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+app.use(cors({
+    origin: (origin, callback) => {
+        // allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        
+        const isAllowed = allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production";
+        if (isAllowed) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
+    credentials: true
+}));
 
-app.use(express.json());
+app.use(express.json({ type: "application/json" }));
 app.use(requestLogger);
 
 const port = process.env.PORT ?? 3001;

@@ -1,0 +1,111 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hackathon Talent Profile Schema",
+  "type": "object",
+  "properties": {
+    "First Name": { "type": "string" },
+    "Last Name": { "type": "string" },
+    "Email": { "type": "string", "format": "email" },
+    "Headline": { "type": "string" },
+    "Bio": { "type": "string" },
+    "Location": { "type": "string" },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "level": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced", "Expert"] },
+          "yearsOfExperience": { "type": "number" }
+        },
+        "required": ["name", "level"]
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "proficiency": { "type": "string", "enum": ["Basic", "Conversational", "Fluent", "Native"] }
+        }
+      }
+    },
+    "experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "company": { "type": "string" },
+          "role": { "type": "string" },
+          "Start Date": { "type": "string" },
+          "End Date": { "type": "string" },
+          "description": { "type": "string" },
+          "technologies": { "type": "array", "items": { "type": "string" } },
+          "Is Current": { "type": "boolean" }
+        },
+        "required": ["company", "role", "Start Date"]
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "institution": { "type": "string" },
+          "degree": { "type": "string" },
+          "Field of Study": { "type": "string" },
+          "Start Year": { "type": "integer" },
+          "End Year": { "type": "integer" }
+        },
+        "required": ["institution", "degree", "Start Year", "End Year"]
+      }
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "issuer": { "type": "string" },
+          "Issue Date": { "type": "string" }
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "technologies": { "type": "array", "items": { "type": "string" } },
+          "role": { "type": "string" },
+          "link": { "type": ["string", "null"] },
+          "Start Date": { "type": "string" },
+          "End Date": { "type": "string" }
+        },
+        "required": ["name"]
+      }
+    },
+    "availability": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["Available", "Open to Opportunities", "Not Available"] },
+        "type": { "type": "string", "enum": ["Full-time", "Part-time", "Contract", "Freelance"] },
+        "Start Date": { "type": "string" }
+      },
+      "required": ["status", "type"]
+    },
+    "socialLinks": {
+      "type": "object",
+      "properties": {
+        "linkedin": { "type": ["string", "null"] },
+        "github": { "type": ["string", "null"] },
+        "portfolio": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "required": ["First Name", "Last Name", "Email", "Headline", "Location", "skills", "experience", "education", "projects", "availability"]
+}

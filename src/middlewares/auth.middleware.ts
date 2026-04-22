@@ -45,7 +45,9 @@ export class AuthMiddleware {
 
     requireRole(role: string) {
         return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+            // First run authentication
             await this.authenticate(req, res, () => {
+                // If we reach here, user is authenticated and req.user is set
                 if (req.user.role !== role) {
                     return res.status(403).json({
                         success: false,
