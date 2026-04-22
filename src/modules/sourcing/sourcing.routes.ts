@@ -1,13 +1,28 @@
-
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { SourcingController } from "./sourcing.controller.js";
-import { authMiddleware } from "@/shared/middleware/auth.middleware.js";
+import { AuthMiddleware } from "@/middlewares/auth.middleware.js";
 import multer from "multer";
 
+const roleMiddleware = new AuthMiddleware();
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const allowedMimes = [
+            "text/csv",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ];
+        const extension = file.originalname.split(".").pop()?.toLowerCase();
+        const allowedExtensions = ["csv", "xlsx", "xls"];
+
+        if (allowedMimes.includes(file.mimetype) || (extension && allowedExtensions.includes(extension))) {
+            cb(null, true);
+        } else {
+            cb(new Error("Unsupported file type. Please upload a CSV or Excel file (.xlsx, .xls)"));
+        }
+    }
 });
 
 function handleUploadErrors(req: Request, res: Response, next: NextFunction) {
@@ -31,14 +46,14 @@ export class SourcingRoutes {
     private initializeRoutes() {
         this.router.post(
             "/bulk-import",
-            authMiddleware,
+            roleMiddleware.requireRole("recruiter"),
             handleUploadErrors,
             (req, res) => this.controller.bulkImport(req, res)
         );
 
         this.router.get(
             "/template",
-            authMiddleware,
+            roleMiddleware.requireRole("recruiter"),
             (req, res) => this.controller.getTemplate(req, res)
         );
     }

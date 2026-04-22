@@ -1,7 +1,6 @@
 
 import { BaseAIService } from "@/modules/ai/ai.service.js";
 import talentProfileSchema from "./talent-profile.schema.json" with { type: "json" };
-import { readFileSync } from "node:fs";
 
 /**
  * Prompt specific to the Hackathon Talent Profile Schema.

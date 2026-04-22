@@ -95,6 +95,17 @@ export class ApplicantRepository {
     }
 
     /**
+     * Find applicant by email stored in profile
+     */
+    async findByEmail(email: string): Promise<any | null> {
+        const db = await getDb();
+        const result = await db.collection(this.collection).findOne({
+            "profile.Email": email
+        });
+        return result;
+    }
+
+    /**
      * Delete applicant profile by userId
      */
     async deleteByUserId(userId: string): Promise<boolean> {

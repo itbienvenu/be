@@ -116,42 +116,77 @@ export class SourcingService {
             success: false,
         };
 
+        let currentStage: "validation" | "fetch" | "parse" | "save" = "validation";
+
         try {
             const mapped = this.mapRow(row.data, mapping);
             Object.assign(result, { first_name: mapped.first_name, last_name: mapped.last_name, email: mapped.email });
 
             if (!mapped.email) throw new Error("Email is required");
 
-            const existingApplicant = await this.applicantRepo.findByUserId(mapped.email);
+            currentStage = "fetch";
+            // 1. Determine the "Identity" (userId) for this applicant.
+            // We want a valid ObjectId string consistently across the platform.
+            let foundUserId: string;
+
+            // Try finding applicant profile first (it contains the link to userId)
+            const existingApplicant = await this.applicantRepo.findByEmail(mapped.email);
+            
+            if (existingApplicant) {
+                foundUserId = existingApplicant.userId.toString();
+            } else {
+                // No profile yet, check if a user exists with this email
+                const authRepo = new (await import("@/modules/auth/auth.repository.js")).AuthRepository();
+                const user = await authRepo.findByEmail(mapped.email);
+                
+                if (user && user._id) {
+                    foundUserId = user._id.toString();
+                } else {
+                    foundUserId = new (await import("mongodb")).ObjectId().toString();
+                }
+            }
 
             let resumeText = "";
             if (mapped.resume_url) {
                 resumeText = await this.fetchResumeText(mapped.resume_url);
             }
 
+            currentStage = "parse";
             // AI results will now follow the Hackathon Schema via SourcingAIService
             const aiProfile = resumeText ? await this.cvParser.parseCV(resumeText) : null;
-            const finalProfile = this.assembleProfile(mapped, aiProfile);
+            
+            currentStage = "save";
+            // Dual-profile mapping: platformProfile for platform usage, sourcing_profile for hackathon spec.
+            const { platformProfile, sourcing_profile } = this.assembleProfile(mapped, aiProfile);
 
-            let applicantId: string;
             if (existingApplicant) {
-                applicantId = existingApplicant._id.toString();
-                await this.applicantRepo.patchByUserId(mapped.email, {
-                    profile: finalProfile as any,
+                // Safe-Patching: Update individual profile paths to avoid overwriting existing data (like nationality, gender)
+                // that might not be in the sourcing CV but exists on the profile already.
+                const updatePayload: Record<string, any> = {
                     cvRawText: resumeText || existingApplicant.cvRawText,
-                    cvUrl: mapped.resume_url || existingApplicant.cvUrl
+                    cvUrl: mapped.resume_url || existingApplicant.cvUrl,
+                    sourcing_profile: sourcing_profile // Hackathon data usually gets full-reset per sourcing run
+                };
+
+                // Map standard profile fields to dot-notation for safety
+                Object.entries(platformProfile).forEach(([key, value]) => {
+                    if (value !== undefined) updatePayload[`profile.${key}`] = value;
                 });
+
+                await this.applicantRepo.patchByUserId(foundUserId, updatePayload);
             } else {
-                const applicant = await this.applicantRepo.createImported({
-                    userId: mapped.email,
+                await this.applicantRepo.createImported({
+                    userId: foundUserId,
                     cvUrl: mapped.resume_url || "",
                     cvPublicId: `src-${Date.now()}-${row.row_number}`,
                     cvRawText: resumeText,
-                    profile: finalProfile as any
-                });
-                applicantId = applicant._id!;
+                    profile: platformProfile as any,
+                    sourcing_profile: sourcing_profile as any
+                } as any);
             }
 
+            // Consistently use foundUserId (the ObjectId-compatible string) as applicantId in applications
+            const applicantId = foundUserId;
             result.applicantId = applicantId;
 
             const existingApp = await this.applicationRepo.findByApplicantAndJob(applicantId, jobId);
@@ -171,7 +206,7 @@ export class SourcingService {
                 result.success = true;
             }
         } catch (error: any) {
-            result.error = { stage: "save", message: error.message };
+            result.error = { stage: currentStage, message: error.message };
         }
 
         return result;
@@ -203,14 +238,71 @@ export class SourcingService {
         } catch { return ""; }
     }
 
-    private assembleProfile(mapped: MappedCandidateData, ai: any): TalentProfile {
-        return {
+    private assembleProfile(mapped: MappedCandidateData, ai: any) {
+        // 1. Create the platform-standard profile (snake_case)
+        // This ensures the candidate displays correctly in the dashboard and works with the screening engine.
+        const platformProfile = {
+            first_name: mapped.first_name,
+            last_name: mapped.last_name,
+            email: mapped.email,
+            headline: mapped.headline || ai?.["Headline"] || ai?.headline || "Applicant",
+            bio: mapped.bio || ai?.["Bio"] || ai?.bio || "",
+            location: mapped.location || ai?.["Location"] || ai?.location || "Unknown",
+            skills: (ai?.skills || []).map((s: any) => ({
+                name: s.name,
+                level: s.level,
+                years_of_experience: s.yearsOfExperience || s.years_of_experience || 0
+            })),
+            languages: (ai?.languages || []).map((l: any) => ({
+                name: l.name,
+                proficiency: l.proficiency === "Fluent" ? "Advanced" : l.proficiency // Mapping Basic/Fluent to Beginner/Advanced if needed
+            })),
+            experience: (ai?.experience || []).map((e: any) => ({
+                company: e.company,
+                role: e.role,
+                start_date: e["Start Date"] || e.start_date || "",
+                end_date: e["End Date"] || e.end_date || "",
+                description: e.description || "",
+                technologies: e.technologies || [],
+                is_current: !!(e["Is Current"] || e.is_current),
+                work_type: "Full-time" // Default
+            })),
+            education: (ai?.education || []).map((e: any) => ({
+                institution: e.institution,
+                degree: e.degree,
+                field_of_study: e["Field of Study"] || e.field_of_study || "",
+                start_date: e["Start Year"] ? `${e["Start Year"]}-01-01` : (e.start_date || ""),
+                end_date: e["End Year"] ? `${e["End Year"]}-01-01` : (e.end_date || "")
+            })),
+            projects: (ai?.projects || []).map((p: any) => ({
+                name: p.name,
+                description: p.description || "",
+                technologies: p.technologies || [],
+                link: p.link || null,
+                start_date: p["Start Date"] || p.start_date || "",
+                end_date: p["End Date"] || p.end_date || ""
+            })),
+            availability: {
+                status: ai?.availability?.status || "Open to Opportunities",
+                type: ai?.availability?.type === "Contract" ? "Freelance" : (ai?.availability?.type || "Full-time"),
+                start_date: ai?.availability?.["Start Date"] || ai?.availability?.start_date || null
+            },
+            social_links: {
+                linkedin: mapped.linkedin || ai?.socialLinks?.linkedin || ai?.social_links?.linkedin || null,
+                github: mapped.github || ai?.socialLinks?.github || ai?.social_links?.github || null,
+                twitter: null
+            }
+        };
+
+        // 2. Create the Hackathon-specific Talent Profile (CSV Key Style)
+        // This keeps the module compliant with the exact schema requested for the AI Ranking.
+        const sourcing_profile: TalentProfile = {
             "First Name": mapped.first_name,
             "Last Name": mapped.last_name,
             "Email": mapped.email,
-            "Headline": mapped.headline || ai?.["Headline"] || ai?.headline || "Applicant",
-            "Bio": mapped.bio || ai?.["Bio"] || ai?.bio || "",
-            "Location": mapped.location || ai?.["Location"] || ai?.location || "Unknown",
+            "Headline": platformProfile.headline,
+            "Bio": platformProfile.bio,
+            "Location": platformProfile.location,
             "skills": ai?.skills || [],
             "languages": ai?.languages || [],
             "experience": ai?.experience || [],
@@ -218,10 +310,12 @@ export class SourcingService {
             "projects": ai?.projects || [],
             "availability": ai?.availability || { status: "Open to Opportunities", type: "Full-time" },
             "socialLinks": {
-                "linkedin": mapped.linkedin || ai?.socialLinks?.linkedin || ai?.social_links?.linkedin || null,
-                "github": mapped.github || ai?.socialLinks?.github || ai?.social_links?.github || null,
+                "linkedin": platformProfile.social_links.linkedin,
+                "github": platformProfile.social_links.github,
                 "portfolio": mapped.portfolio || ai?.socialLinks?.portfolio || null,
             }
         };
+
+        return { platformProfile, sourcing_profile };
     }
 }

@@ -390,18 +390,8 @@ export const jobPaths = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    data: {
-                                        type: "object",
-                                        properties: {
-                                            acknowledged: { type: "boolean", example: true },
-                                            insertedId:   { type: "string", example: "69e60b1290036afefcc801bf" }
-                                        }
-                                    }
+                                    data: { $ref: "#/components/schemas/JobFull" }
                                 }
-                            },
-                            example: {
-                                success: true,
-                                data: { acknowledged: true, insertedId: "69e60b1290036afefcc801bf" }
                             }
                         }
                     }
