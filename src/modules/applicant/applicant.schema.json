@@ -1,360 +1,360 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "User Profile Schema",
-    "type": "object",
-    "properties": {
-        "first_name": {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User Profile Schema",
+  "type": "object",
+  "properties": {
+    "first_name": {
+      "type": "string"
+    },
+    "last_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "headline": {
+      "type": "string"
+    },
+    "bio": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "gender": {
+      "type": "string",
+      "enum": [
+        "Male",
+        "Female",
+        "Other"
+      ]
+    },
+    "nationality": {
+      "type": "string"
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date"
+    },
+    "profile_picture": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
             "type": "string"
-        },
-        "last_name": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string",
-            "format": "email"
-        },
-        "headline": {
-            "type": "string"
-        },
-        "bio": {
-            "type": "string"
-        },
-        "location": {
-            "type": "string"
-        },
-        "gender": {
+          },
+          "level": {
             "type": "string",
             "enum": [
-                "Male",
-                "Female",
-                "Other"
+              "Beginner",
+              "Intermediate",
+              "Advanced",
+              "Expert"
             ]
+          },
+          "years_of_experience": {
+            "type": "number"
+          }
         },
-        "nationality": {
+        "required": [
+          "name",
+          "level"
+        ]
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
             "type": "string"
+          },
+          "proficiency": {
+            "type": "string",
+            "enum": [
+              "Beginner",
+              "Intermediate",
+              "Advanced",
+              "Native"
+            ]
+          }
         },
-        "date_of_birth": {
+        "required": [
+          "name",
+          "proficiency"
+        ]
+      }
+    },
+    "experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "company": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "start_date": {
             "type": "string",
             "format": "date"
+          },
+          "work_type": {
+            "type": "string",
+            "enum": [
+              "Full-time",
+              "Part-time",
+              "Freelance"
+            ]
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "location": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_current": {
+            "type": "boolean"
+          }
         },
-        "profile_picture": {
+        "required": [
+          "company",
+          "role",
+          "start_date"
+        ]
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "institution": {
+            "type": "string"
+          },
+          "degree": {
+            "type": "string"
+          },
+          "major": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "field_of_study": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "institution",
+          "degree",
+          "start_date"
+        ]
+      }
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "issue_date": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "name",
+          "issuer"
+        ]
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "link": {
             "type": [
-                "string",
-                "null"
+              "string",
+              "null"
             ],
             "format": "uri"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          }
         },
-        "skills": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "level": {
-                        "type": "string",
-                        "enum": [
-                            "Beginner",
-                            "Intermediate",
-                            "Advanced",
-                            "Expert"
-                        ]
-                    },
-                    "years_of_experience": {
-                        "type": "number"
-                    }
-                },
-                "required": [
-                    "name",
-                    "level"
-                ]
-            }
-        },
-        "languages": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "proficiency": {
-                        "type": "string",
-                        "enum": [
-                            "Beginner",
-                            "Intermediate",
-                            "Advanced",
-                            "Native"
-                        ]
-                    }
-                },
-                "required": [
-                    "name",
-                    "proficiency"
-                ]
-            }
-        },
-        "experience": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "company": {
-                        "type": "string"
-                    },
-                    "role": {
-                        "type": "string"
-                    },
-                    "start_date": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "work_type": {
-                        "type": "string",
-                        "enum": [
-                            "Full-time",
-                            "Part-time",
-                            "Freelance"
-                        ]
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "location": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "technologies": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "is_current": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "company",
-                    "role",
-                    "start_date"
-                ]
-            }
-        },
-        "education": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "institution": {
-                        "type": "string"
-                    },
-                    "degree": {
-                        "type": "string"
-                    },
-                    "major": {
-                        "type": "string"
-                    },
-                    "location": {
-                        "type": "string"
-                    },
-                    "field_of_study": {
-                        "type": "string"
-                    },
-                    "start_date": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "format": "date"
-                    }
-                },
-                "required": [
-                    "institution",
-                    "degree",
-                    "start_date"
-                ]
-            }
-        },
-        "certifications": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "issuer": {
-                        "type": "string"
-                    },
-                    "issue_date": {
-                        "type": "string",
-                        "format": "date"
-                    }
-                },
-                "required": [
-                    "name",
-                    "issuer"
-                ]
-            }
-        },
-        "projects": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "technologies": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "link": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "uri"
-                    },
-                    "start_date": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "format": "date"
-                    }
-                },
-                "required": [
-                    "name"
-                ]
-            }
-        },
-        "availability": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "enum": [
-                        "Available",
-                        "Not Available",
-                        "Open to Opportunities"
-                    ]
-                },
-                "type": {
-                    "type": "string",
-                    "enum": [
-                        "Full-time",
-                        "Part-time",
-                        "Freelance"
-                    ]
-                },
-                "start_date": {
-                    "type": "string",
-                    "format": "date"
-                }
-            }
-        },
-        "social_links": {
-            "type": "object",
-            "properties": {
-                "linkedin": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "format": "uri"
-                },
-                "github": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "format": "uri"
-                },
-                "twitter": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "format": "uri"
-                }
-            }
-        },
-        "preferences": {
-            "type": "object",
-            "properties": {
-                "job_type": {
-                    "type": "string",
-                    "enum": [
-                        "Remote",
-                        "On-site",
-                        "Hybrid"
-                    ]
-                },
-                "work_mode": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "remote",
-                            "on-site",
-                            "hybrid"
-                        ]
-                    }
-                },
-                "expected_salary": {
-                    "type": "object",
-                    "properties": {
-                        "min": {
-                            "type": "number"
-                        },
-                        "max": {
-                            "type": "number"
-                        },
-                        "currency": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "area_of_expertise": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "experience_years": {
-                        "type": "number"
-                    }
-                }
-            }
-        }
+        "required": [
+          "name"
+        ]
+      }
     },
-    "required": [
-        "first_name",
-        "last_name",
-        "email",
-        "headline",
-        "location",
-        "skills",
-        "experience",
-        "education",
-        "projects",
-        "availability"
-    ]
+    "availability": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "Available",
+            "Not Available",
+            "Open to Opportunities"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Full-time",
+            "Part-time",
+            "Freelance"
+          ]
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "social_links": {
+      "type": "object",
+      "properties": {
+        "linkedin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "github": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "twitter": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "properties": {
+        "job_type": {
+          "type": "string",
+          "enum": [
+            "Remote",
+            "On-site",
+            "Hybrid"
+          ]
+        },
+        "work_mode": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "remote",
+              "on-site",
+              "hybrid"
+            ]
+          }
+        },
+        "expected_salary": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "currency": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "area_of_expertise": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "experience_years": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "first_name",
+    "last_name",
+    "email",
+    "headline",
+    "location",
+    "skills",
+    "experience",
+    "education",
+    "projects",
+    "availability"
+  ]
 }

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Request, Response } from "express";
 import { ApplicantController } from "./applicant.controller.js";
 import { authMiddleware } from "@/shared/middleware/auth.middleware.js";
 import multer from "multer";
@@ -56,6 +57,7 @@ export class ApplicantRoutes {
             authMiddleware,
             (req, res) => this.applicantController.patchProfile(req, res)
         );
+
     }
 }
 

@@ -5,6 +5,21 @@ import type { ApplicantJSON } from "./applicant.types.js";
 export class ApplicantRepository {
     private readonly collection = "applicants";
 
+    async createImported(data: Omit<ApplicantJSON, "_id">): Promise<ApplicantJSON> {
+        const db = await getDb();
+        const payload = {
+            ...data,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        const result = await db.collection(this.collection).insertOne(payload);
+        return {
+            ...payload,
+            _id: result.insertedId.toString()
+        };
+    }
+
     /**
      * Create or update an applicant profile by userId
      */

@@ -2,6 +2,7 @@ import { Ajv } from "ajv";
 import addFormats from "ajv-formats";
 import type { FormatsPlugin } from "ajv-formats";
 import jobSchema from "@/modules/job/job.schema.json" with { type: "json" };
+import sourcingSchema from "@/modules/sourcing/sourcing.schema.json" with { type: "json" };
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 (addFormats as unknown as FormatsPlugin)(ajv);
@@ -11,6 +12,7 @@ const ajv = new Ajv({ allErrors: true, strict: false });
  * Compiling it once outside the function for performance.
  */
 const validator = ajv.compile(jobSchema);
+const bulkUploadValidator = ajv.compile(sourcingSchema);
 
 /**
  * Validates job data against the standard Job JSON Schema.
@@ -22,5 +24,13 @@ export function validateJob(data: any) {
     return {
         isValid,
         errors: validator.errors || null
+    };
+}
+
+export function validateBulkUploadRequest(data: any) {
+    const isValid = bulkUploadValidator(data);
+    return {
+        isValid,
+        errors: bulkUploadValidator.errors || null
     };
 }

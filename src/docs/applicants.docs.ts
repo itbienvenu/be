@@ -5,6 +5,7 @@
  *   Step 1: POST /api/v1/applicants/upload-cv   — upload PDF, AI extracts structured profile
  *   Step 2: POST /api/v1/applicants/save-profile — review and confirm the extracted profile
  *
+ *
  * Other endpoints:
  *   GET   /api/v1/applicants/profile  — get own profile
  *   PATCH /api/v1/applicants/profile  — partially update profile fields
@@ -167,8 +168,6 @@ export const applicantSchemas = {
             userId:    { type: "string", example: "661f1b2c3d4e5f6a7b8c9d0f" },
             cvUrl:     { type: "string", format: "uri", description: "Cloudinary URL of the uploaded CV PDF", example: "https://res.cloudinary.com/..." },
             profile:   { $ref: "#/components/schemas/ApplicantProfile" },
-            createdAt: { type: "string", format: "date-time" },
-            updatedAt: { type: "string", format: "date-time" }
         }
     }
 };
