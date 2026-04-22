@@ -47,6 +47,30 @@ export const sourcingSchemas = {
                 }
             }
         }
+    },
+
+    SourcingColumnMapping: {
+        type: "object",
+        description: "JSON string mapping spreadsheet headers to system fields.",
+        properties: {
+            first_name: { type: "string", description: "Column name for first name (Required)" },
+            last_name: { type: "string", description: "Column name for last name (Required)" },
+            email: { type: "string", description: "Column name for email (Required)" },
+            resume_url: { type: "string", description: "Column name for resume PDF link (Optional)" },
+            headline: { type: "string", description: "Column name for professional headline (Optional)" },
+            bio: { type: "string", description: "Column name for bio (Optional)" },
+            location: { type: "string", description: "Column name for location (Optional)" },
+            linkedin: { type: "string", description: "Column name for LinkedIn URL (Optional)" },
+            github: { type: "string", description: "Column name for GitHub URL (Optional)" },
+            portfolio: { type: "string", description: "Column name for Portfolio/Website URL (Optional)" }
+        },
+        example: {
+            first_name: "Candidate First Name",
+            last_name: "Candidate Last Name",
+            email: "Email Address",
+            resume_url: "CV Link",
+            location: "Current City"
+        }
     }
 };
 
@@ -55,15 +79,15 @@ export const sourcingPaths = {
     "/api/v1/sourcing/bulk-import": {
         post: {
             tags: ["Sourcing"],
-            summary: "Bulk import candidates for a specific job",
+            summary: "Bulk import candidates (Hackathon Talent Profile Schema)",
             description:
-                "Uploads a spreadsheet (Excel or CSV) containing candidate data from an external system. " +
-                "For every candidate in the file, the system will: " +
-                "\n1. Map spreadsheet columns to system fields using `columnMappingJson`." +
-                "\n2. Fetch the resume from the `resume_url` (if provided)." +
-                "\n3. Use Gemini AI to extract a full structured profile from the resume." +
-                "\n4. Create a new Applicant record and **immediately link them to the provided `jobId`** by creating an Application record." +
-                "\n\nThis is the fastest way for recruiters to populate a job pipeline with candidates from LinkedIn, Indeed, etc.",
+                "Uploads a spreadsheet and maps it to the Umurava Talent Profile Schema. " +
+                "\n\n**Frontend Integration:**" +
+                "\n1. Send a `multipart/form-data` request." +
+                "\n2. `columnMappingJson` must be a JSON string like: `{\"first_name\": \"Excel Col A\", \"email\": \"Excel Col B\", ...}`." +
+                "\n3. `skipInvalidRows`: if true, the import continues even if individual rows fail." +
+                "\n\n**Schema Enforcement:**" +
+                "\nThe system strictly enforces the Umurava Hackathon Talent Profile specification, ensuring all candidates are ready for AI Ranking.",
             security: [{ BearerAuth: [] }],
             requestBody: {
                 required: true,
@@ -73,10 +97,10 @@ export const sourcingPaths = {
                             type: "object",
                             required: ["jobId", "file", "columnMappingJson"],
                             properties: {
-                                jobId: { type: "string" },
+                                jobId: { type: "string", example: "661f1b2c3d4e5f6a7b8c9d10" },
                                 file: { type: "string", format: "binary" },
-                                columnMappingJson: { type: "string" },
-                                skipInvalidRows: { type: "boolean" }
+                                columnMappingJson: { type: "string", description: "Stringified SourcingColumnMapping object" },
+                                skipInvalidRows: { type: "boolean", default: false }
                             }
                         }
                     }

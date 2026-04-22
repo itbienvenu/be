@@ -1,20 +1,24 @@
 
 import { Router } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { SourcingController } from "./sourcing.controller.js";
-import { AuthMiddleware } from "@/middlewares/auth.middleware.js";
+import { authMiddleware } from "@/shared/middleware/auth.middleware.js";
 import multer from "multer";
 
-const roleMiddleware = new AuthMiddleware();
-const upload = multer({ 
+const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for spreadsheets
+    limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-/**
- * SourcingRoutes
- * 
- * Exposes recruiter-specific candidate sourcing and bulk management endpoints.
- */
+function handleUploadErrors(req: Request, res: Response, next: NextFunction) {
+    upload.single("file")(req, res, (err: any) => {
+        if (err) {
+            return res.status(400).json({ success: false, message: `File upload failed: ${err.message}` });
+        }
+        next();
+    });
+}
+
 export class SourcingRoutes {
     public router: Router;
     private controller = new SourcingController();
@@ -25,24 +29,16 @@ export class SourcingRoutes {
     }
 
     private initializeRoutes() {
-        /**
-         * POST /api/v1/sourcing/bulk-import
-         * Triggered by recruiters to import batches of candidates for a job.
-         */
         this.router.post(
             "/bulk-import",
-            roleMiddleware.requireRole("recruiter"),
-            upload.single("file"),
+            authMiddleware,
+            handleUploadErrors,
             (req, res) => this.controller.bulkImport(req, res)
         );
 
-        /**
-         * GET /api/v1/sourcing/template
-         * Provides a CSV template for bulk imports.
-         */
         this.router.get(
             "/template",
-            roleMiddleware.requireRole("recruiter"),
+            authMiddleware,
             (req, res) => this.controller.getTemplate(req, res)
         );
     }

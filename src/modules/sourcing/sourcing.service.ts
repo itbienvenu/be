@@ -1,12 +1,11 @@
 
 import XLSX from "xlsx";
 import { PDFTool } from "@/shared/utils/pdfs-tool.js";
-import { CVParserService } from "@/modules/ai/ai.service.js";
+import { SourcingAIService } from "./sourcing.ai.service.js";
 import { ApplicantRepository } from "@/modules/applicant/applicant.repository.js";
 import { ApplicationRepository } from "@/modules/application/application.repository.js";
 import { JobRepository } from "@/modules/job/job.repository.js";
 import logger from "@/shared/utils/logger.js";
-import type { ApplicantProfileJSON } from "@/modules/applicant/applicant.types.js";
 import type {
     SourcingBulkUploadRequest,
     SourcingBulkUploadResponse,
@@ -14,6 +13,7 @@ import type {
     MappedCandidateData,
     CandidateProcessResult,
     ColumnMapping,
+    TalentProfile,
 } from "./sourcing.types.js";
 
 /**
@@ -22,18 +22,18 @@ import type {
  * Orchestrates recruiter-driven candidate sourcing flows:
  * - Bulk importing candidates from spreadsheets
  * - Linking them to specific jobs
- * - Using AI to normalize resume data
+ * - Using AI to normalize resume data specifically for the Hackathon Ranking System.
  */
 export class SourcingService {
     private pdfTool: PDFTool;
-    private cvParser: CVParserService;
+    private cvParser: SourcingAIService;
     private applicantRepo: ApplicantRepository;
     private applicationRepo: ApplicationRepository;
     private jobRepo: JobRepository;
 
     constructor() {
         this.pdfTool = new PDFTool();
-        this.cvParser = new CVParserService();
+        this.cvParser = new SourcingAIService();
         this.applicantRepo = new ApplicantRepository();
         this.applicationRepo = new ApplicationRepository();
         this.jobRepo = new JobRepository();
@@ -91,7 +91,7 @@ export class SourcingService {
             return {
                 success: false,
                 data: { imported: 0, failed: 0, total: 0, jobId: req.jobId, results: [] },
-                message: error.message || "Bulk import failed",
+                message: "Internal server error during processing",
             };
         }
     }
@@ -100,16 +100,9 @@ export class SourcingService {
         const workbook = XLSX.read(buffer, { type: "buffer" });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("File contains no sheets");
-        
-        const sheet = workbook.Sheets[sheetName];
-        if (!sheet) throw new Error("Failed to read sheet");
-        
-        const rows: any[] = XLSX.utils.sheet_to_json(sheet);
 
-        return rows.map((data, index) => ({
-            row_number: index + 2,
-            data,
-        }));
+        const rows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]!);
+        return rows.map((data, index) => ({ row_number: index + 2, data }));
     }
 
     private async processCandidateRow(
@@ -129,8 +122,6 @@ export class SourcingService {
 
             if (!mapped.email) throw new Error("Email is required");
 
-            // 1. Check for existing applicant or create new one
-            let applicantId: string;
             const existingApplicant = await this.applicantRepo.findByUserId(mapped.email);
 
             let resumeText = "";
@@ -138,14 +129,15 @@ export class SourcingService {
                 resumeText = await this.fetchResumeText(mapped.resume_url);
             }
 
-            const parsedProfile = resumeText ? await this.cvParser.parseCV(resumeText) : null;
-            const finalProfile = this.assembleProfile(mapped, parsedProfile);
+            // AI results will now follow the Hackathon Schema via SourcingAIService
+            const aiProfile = resumeText ? await this.cvParser.parseCV(resumeText) : null;
+            const finalProfile = this.assembleProfile(mapped, aiProfile);
 
+            let applicantId: string;
             if (existingApplicant) {
                 applicantId = existingApplicant._id.toString();
-                // Update profile with new information from AI/Spreadsheet
                 await this.applicantRepo.patchByUserId(mapped.email, {
-                    profile: finalProfile,
+                    profile: finalProfile as any,
                     cvRawText: resumeText || existingApplicant.cvRawText,
                     cvUrl: mapped.resume_url || existingApplicant.cvUrl
                 });
@@ -155,14 +147,13 @@ export class SourcingService {
                     cvUrl: mapped.resume_url || "",
                     cvPublicId: `src-${Date.now()}-${row.row_number}`,
                     cvRawText: resumeText,
-                    profile: finalProfile
+                    profile: finalProfile as any
                 });
                 applicantId = applicant._id!;
             }
 
             result.applicantId = applicantId;
 
-            // 2. Check for existing application for this job
             const existingApp = await this.applicationRepo.findByApplicantAndJob(applicantId, jobId);
             if (existingApp) {
                 result.applicationId = existingApp._id!.toString();
@@ -170,14 +161,9 @@ export class SourcingService {
                 return result;
             }
 
-            // 3. Create Application
             const application = await this.applicationRepo.create({
-                applicantId: applicantId,
-                jobId,
-                cvUrl: mapped.resume_url || "",
-                cvRawText: resumeText,
-                status: "pending",
-                appliedAt: new Date(),
+                applicantId, jobId, status: "pending", appliedAt: new Date(),
+                cvUrl: mapped.resume_url || "", cvRawText: resumeText
             });
 
             if (application?._id) {
@@ -201,8 +187,10 @@ export class SourcingService {
             resume_url: get("resume_url"),
             headline: get("headline"),
             bio: get("bio"),
+            location: get("location"),
             linkedin: get("linkedin"),
             github: get("github"),
+            portfolio: get("portfolio"),
         };
     }
 
@@ -215,24 +203,24 @@ export class SourcingService {
         } catch { return ""; }
     }
 
-    private assembleProfile(mapped: MappedCandidateData, ai: any): ApplicantProfileJSON {
+    private assembleProfile(mapped: MappedCandidateData, ai: any): TalentProfile {
         return {
-            first_name: mapped.first_name,
-            last_name: mapped.last_name,
-            email: mapped.email,
-            headline: mapped.headline || ai?.headline || "",
-            bio: mapped.bio || ai?.bio || "",
-            location: ai?.location || "",
-            skills: ai?.skills || [],
-            languages: ai?.languages || [],
-            experience: ai?.experience || [],
-            education: ai?.education || [],
-            projects: ai?.projects || [],
-            availability: { status: "Open to Opportunities" },
-            social_links: {
-                linkedin: mapped.linkedin || ai?.social_links?.linkedin || null,
-                github: mapped.github || ai?.social_links?.github || null,
-                twitter: ai?.social_links?.twitter || null,
+            "First Name": mapped.first_name,
+            "Last Name": mapped.last_name,
+            "Email": mapped.email,
+            "Headline": mapped.headline || ai?.["Headline"] || ai?.headline || "Applicant",
+            "Bio": mapped.bio || ai?.["Bio"] || ai?.bio || "",
+            "Location": mapped.location || ai?.["Location"] || ai?.location || "Unknown",
+            "skills": ai?.skills || [],
+            "languages": ai?.languages || [],
+            "experience": ai?.experience || [],
+            "education": ai?.education || [],
+            "projects": ai?.projects || [],
+            "availability": ai?.availability || { status: "Open to Opportunities", type: "Full-time" },
+            "socialLinks": {
+                "linkedin": mapped.linkedin || ai?.socialLinks?.linkedin || ai?.social_links?.linkedin || null,
+                "github": mapped.github || ai?.socialLinks?.github || ai?.social_links?.github || null,
+                "portfolio": mapped.portfolio || ai?.socialLinks?.portfolio || null,
             }
         };
     }

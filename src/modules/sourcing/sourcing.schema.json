@@ -19,8 +19,10 @@
         "phone": { "type": "string" },
         "headline": { "type": "string" },
         "bio": { "type": "string" },
+        "location": { "type": "string" },
         "linkedin": { "type": "string" },
-        "github": { "type": "string" }
+        "github": { "type": "string" },
+        "portfolio": { "type": "string" }
       }
     },
     "skipInvalidRows": {

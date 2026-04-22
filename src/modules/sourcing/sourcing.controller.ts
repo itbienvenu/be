@@ -9,7 +9,16 @@ export class SourcingController {
 
     async bulkImport(req: Request, res: Response) {
         try {
-            const recruiterId = (req as any).user?._id;
+            const user = (req as any).user;
+            const recruiterId = user?._id;
+
+            if (user?.role !== "recruiter") {
+                return res.status(403).json({ success: false, message: "Forbidden: Access restricted to recruiter only" });
+            }
+
+            logger.info(`[SourcingController] req.body keys: ${Object.keys(req.body || {})}`);
+            logger.info(`[SourcingController] req.file present: ${!!req.file}`);
+
             const { jobId, columnMappingJson, skipInvalidRows } = req.body;
             const file = req.file;
 

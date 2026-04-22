@@ -44,16 +44,17 @@ export class AuthMiddleware {
     }
 
     requireRole(role: string) {
-        return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-            await this.authenticate(req, res, () => {
-                if (req.user.role !== role) {
-                    return res.status(403).json({
-                        success: false,
-                        message: `Forbidden: Access restricted to ${role} only`
-                    });
-                }
-                next();
-            });
+        return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+            if (!req.user) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Access denied" });
+            }
+            if (req.user.role !== role) {
+                return res.status(403).json({
+                    success: false,
+                    message: `Forbidden: Access restricted to ${role} only`
+                });
+            }
+            next();
         };
     }
 }

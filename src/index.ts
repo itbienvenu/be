@@ -25,13 +25,10 @@ if (missing.length > 0) {
 
 const app = express();
 
-// CORS — allow all origins in non-production environments
-if (process.env.NODE_ENV !== "production") {
-    app.use(cors());
-    logger.warn("CORS: all origins allowed (development mode)");
-}
+// CORS — always enabled so error responses also include CORS headers
+app.use(cors());
 
-app.use(express.json());
+app.use(express.json({ type: "application/json" }));
 app.use(requestLogger);
 
 const port = process.env.PORT ?? 3001;
