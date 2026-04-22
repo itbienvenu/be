@@ -51,6 +51,13 @@ export class JobRoutes {
             (req, res) => this.jobController.createJobManually(req, res)
         );
 
+        // AI Route: Generate a professional job description from a simple draft
+        this.router.post(
+            "/generate-description",
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.jobController.generateJobDescription(req, res)
+        );
+
         // Recruiter: patch (edit) a draft job
         this.router.patch(
             "/:id",

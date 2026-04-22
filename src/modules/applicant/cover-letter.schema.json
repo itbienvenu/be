@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "subject": {
+      "type": "string",
+      "description": "Professional subject line for the cover letter"
+    },
+    "content": {
+      "type": "string",
+      "description": "The full body text of the cover letter"
+    },
+    "highlights": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Key points from the CV that were emphasized in the letter"
+    },
+    "tips": {
+      "type": "string",
+      "description": "Advice for the applicant on how to further customize this letter"
+    }
+  },
+  "required": ["subject", "content", "highlights", "tips"],
+  "additionalProperties": false
+}

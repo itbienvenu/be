@@ -57,6 +57,14 @@ export class ApplicantRoutes {
             (req, res) => this.applicantController.patchProfile(req, res)
         );
 
+        // AI-Powered Cover Letter Generation
+        this.router.post(
+            "/generate-cover-letter/:jobId",
+            authMiddleware,
+            upload.single("cvFile"),
+            (req, res) => this.applicantController.generateCoverLetter(req, res)
+        );
+
     }
 }
 

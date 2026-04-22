@@ -12,6 +12,10 @@ const jobJsonSchema = JSON.parse(readFileSync(new URL("../job/job.schema.json", 
 const applicantJsonSchema = JSON.parse(readFileSync(new URL("../applicant/applicant.schema.json", import.meta.url), "utf-8"));
 const jobPrompt = readFileSync(new URL("./prompts/job.prompt.txt", import.meta.url), "utf-8");
 const cvParserPrompt = readFileSync(new URL("./prompts/cv-parser.prompt.txt", import.meta.url), "utf-8");
+const generateJobPrompt = readFileSync(new URL("./prompts/generate-job.prompt.txt", import.meta.url), "utf-8");
+const coverLetterPrompt = readFileSync(new URL("./prompts/cover-letter.prompt.txt", import.meta.url), "utf-8");
+const coverLetterSchema = JSON.parse(readFileSync(new URL("../applicant/cover-letter.schema.json", import.meta.url), "utf-8"));
+const generateJobSchema = JSON.parse(readFileSync(new URL("../job/generate-job.schema.json", import.meta.url), "utf-8"));
 
 export abstract class BaseAIService<T> {
     private ajv: Ajv;
@@ -28,11 +32,11 @@ export abstract class BaseAIService<T> {
         this.apiKey = key;
         this.genAI = new GoogleGenerativeAI(this.apiKey);
 
-        this.ajv = new Ajv({ 
-            allErrors: true, 
+        this.ajv = new Ajv({
+            allErrors: true,
             strict: false,
             // Gemini often returns numbers as strings; AJV coercion converts them back to numbers
-            coerceTypes: true 
+            coerceTypes: true
         });
         (addFormats as unknown as FormatsPlugin)(this.ajv);
         this.validator = this.ajv.compile<T>(schema);
@@ -58,7 +62,6 @@ export abstract class BaseAIService<T> {
         if (schema.enum) {
             geminiNode.type = SchemaType.STRING;  // Force STRING type for enum compatibility
             geminiNode.enum = schema.enum.map((val: any) => {
-                // Convert all enum values to strings for Gemini API
                 return typeof val === 'number' ? String(val) : val;
             });
         }
@@ -101,7 +104,6 @@ export abstract class BaseAIService<T> {
             }
         });
 
-        // 60-second timeout to prevent background workers from hanging indefinitely
         const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error("AI_REQUEST_TIMEOUT")), 60000)
         );
@@ -129,7 +131,8 @@ export abstract class BaseAIService<T> {
 
             const valid = this.validator(parsed);
             if (!valid) {
-                console.error("AI Validation Errors:", JSON.stringify(this.validator.errors, null, 2));
+                console.error(`AI Validation Errors (${this.modelName}):`, JSON.stringify(this.validator.errors, null, 2));
+                console.error("Raw AI Response that failed validation:", cleanedText);
                 return null;
             }
 
@@ -183,5 +186,59 @@ export class CVParserService extends BaseAIService<any> {
 
     public async parseCV(rawCV: string): Promise<any | null> {
         return this.callAI(rawCV);
+    }
+}
+
+/**
+ * Service for generating personalized cover letters
+ */
+export interface CoverLetterResponse {
+    subject: string;
+    content: string;
+    highlights: string[];
+    tips: string;
+}
+
+export class CoverLetterAIService extends BaseAIService<CoverLetterResponse> {
+    protected readonly modelName = process.env.GEMINI_AI_MODEL || "gemini-1.5-flash";
+    protected readonly systemPrompt = coverLetterPrompt;
+
+    constructor(apiKey?: string) {
+        super(coverLetterSchema, apiKey);
+    }
+
+    public async generateCoverLetter(cv: string, job: string, instructions?: string): Promise<CoverLetterResponse | null> {
+        const input = `
+APPLICANT CV:
+${cv}
+
+JOB DESCRIPTION:
+${job}
+
+CUSTOM INSTRUCTIONS:
+${instructions || "None provided. Write a standard professional cover letter."}
+        `.trim();
+
+        return this.callAI(input);
+    }
+}
+
+/**
+ * Service for generating a full job description from a simple input
+ */
+export interface JobGenerationResponse {
+    full_description: string;
+}
+
+export class JobGeneratorAIService extends BaseAIService<JobGenerationResponse> {
+    protected readonly modelName = process.env.GEMINI_AI_MODEL || "gemini-1.5-flash";
+    protected readonly systemPrompt = generateJobPrompt;
+
+    constructor(apiKey?: string) {
+        super(generateJobSchema, apiKey);
+    }
+
+    public async generateFullDescription(simpleInput: string): Promise<JobGenerationResponse | null> {
+        return this.callAI(simpleInput);
     }
 }
