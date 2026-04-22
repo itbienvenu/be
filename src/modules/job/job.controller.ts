@@ -148,8 +148,11 @@ export class JobController {
 
     async getAllJobs(req: Request, res: Response) {
         try {
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 10;
+
             // Default to public view which omits sensitive fields
-            const result = await this.jobService.getAllJobs(true);
+            const result = await this.jobService.getAllJobs(true, page, limit);
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("GET_ALL_JOBS_ERROR", error);
@@ -202,7 +205,10 @@ export class JobController {
             if (!recruiterId) {
                 return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
             }
-            const result = await this.jobService.getJobsByRecruiter(recruiterId);
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 10;
+
+            const result = await this.jobService.getJobsByRecruiter(recruiterId, page, limit);
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("GET_RECRUITER_JOBS_ERROR", error);
@@ -285,6 +291,22 @@ export class JobController {
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("UNARCHIVE_JOB_ERROR", error);
+            const status = error.statusCode ?? 400;
+            res.status(status).json({ success: false, message: error.message });
+        }
+    }
+
+    async deleteJob(req: Request, res: Response) {
+        try {
+            const recruiterId = (req as any).user?._id;
+            if (!recruiterId) {
+                return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
+            }
+            const id = req.params.id as string;
+            await this.jobService.deleteJob(id, recruiterId);
+            res.status(204).send(); // No content on successful deletion
+        } catch (error: any) {
+            logger.error("DELETE_JOB_ERROR", error);
             const status = error.statusCode ?? 400;
             res.status(status).json({ success: false, message: error.message });
         }

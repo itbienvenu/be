@@ -39,6 +39,32 @@ export class SourcingService {
         this.jobRepo = new JobRepository();
     }
 
+    async processBatchCVs(jobId: string, files: any[], recruiterId: string): Promise<void> {
+        logger.info(`[Sourcing] Starting batch CV upload for job ${jobId} (Total: ${files.length})`);
+        
+        const batchSize = 3; // Smaller batch for heavy AI processing
+        for (let i = 0; i < files.length; i += batchSize) {
+            const batch = files.slice(i, i + batchSize);
+            await Promise.all(batch.map(file => this.processSingleCV(file, jobId)));
+        }
+    }
+
+    private async processSingleCV(file: { buffer: Buffer; originalname: string }, jobId: string) {
+        try {
+            const rawText = await this.pdfTool.readPdfFromBuffer(file.buffer);
+            // We use a mock "row" and "mapping" for the existing pipeline
+            const mockRow: RawCandidateRow = {
+                row_number: 0,
+                data: { "Email": "pending@extraction.com" } // Will be overwritten by AI
+            };
+            const mockMapping: ColumnMapping = { email: "Email" };
+            
+            await this.processCandidateRow(mockRow, mockMapping, jobId, file.buffer);
+        } catch (error: any) {
+            logger.error(`[Sourcing] Failed to process CV ${file.originalname}: ${error.message}`);
+        }
+    }
+
     async processBulkImport(req: SourcingBulkUploadRequest, recruiterId: string): Promise<SourcingBulkUploadResponse> {
         try {
             logger.info(`[Sourcing] Starting bulk import for job ${req.jobId} by recruiter ${recruiterId}`);
@@ -55,31 +81,37 @@ export class SourcingService {
             const rows = this.parseFile(req.file.buffer, req.file.originalname);
             const results: CandidateProcessResult[] = [];
 
-            for (const row of rows) {
-                logger.info(`[Sourcing] Processing row ${row.row_number}/${rows.length + 1}...`);
-                const result = await this.processCandidateRow(row, req.columnMapping, req.jobId);
-                results.push(result);
+            const batchSize = 5;
+            for (let i = 0; i < rows.length; i += batchSize) {
+                const batch = rows.slice(i, i + batchSize);
+                logger.info(`[Sourcing] Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} candidates)...`);
+                
+                const batchResults = await Promise.all(
+                    batch.map(row => this.processCandidateRow(row, req.columnMapping, req.jobId))
+                );
+                
+                results.push(...batchResults);
 
-                if (!req.skipInvalidRows && !result.success) {
-                    logger.warn(`[Sourcing] Aborting import due to failure at row ${row.row_number}: ${result.error?.message}`);
-                    return {
-                        success: false,
-                        data: {
-                            imported: results.filter(r => r.success).length,
-                            failed: results.filter(r => !r.success).length,
-                            total: rows.length,
-                            jobId: req.jobId,
-                            results,
-                        },
-                        message: `Import aborted at row ${row.row_number}: ${result.error?.message}`,
-                    };
+                if (!req.skipInvalidRows) {
+                    const failure = batchResults.find(r => !r.success);
+                    if (failure) {
+                        return {
+                            success: false,
+                            data: {
+                                imported: results.filter(r => r.success).length,
+                                failed: results.filter(r => !r.success).length,
+                                total: rows.length,
+                                jobId: req.jobId,
+                                results,
+                            },
+                            message: `Import aborted: ${failure.error?.message}`,
+                        };
+                    }
                 }
             }
 
             const imported = results.filter(r => r.success).length;
             const failed = results.filter(r => !r.success).length;
-
-            logger.info(`[Sourcing] Bulk import finished: ${imported} imported, ${failed} failed.`);
 
             return {
                 success: imported > 0 && failed === 0,
@@ -91,7 +123,7 @@ export class SourcingService {
             return {
                 success: false,
                 data: { imported: 0, failed: 0, total: 0, jobId: req.jobId, results: [] },
-                message: "Internal server error during processing",
+                message: "Internal server error",
             };
         }
     }
@@ -108,7 +140,8 @@ export class SourcingService {
     private async processCandidateRow(
         row: RawCandidateRow,
         mapping: ColumnMapping,
-        jobId: string
+        jobId: string,
+        fileBuffer?: Buffer
     ): Promise<CandidateProcessResult> {
         const result: CandidateProcessResult = {
             row_number: row.row_number,
@@ -122,10 +155,25 @@ export class SourcingService {
             const mapped = this.mapRow(row.data, mapping);
             Object.assign(result, { first_name: mapped.first_name, last_name: mapped.last_name, email: mapped.email });
 
-            if (!mapped.email) throw new Error("Email is required");
-
             currentStage = "fetch";
-            // 1. Determine the "Identity" (userId) for this applicant.
+            let resumeText = "";
+
+            if (fileBuffer) {
+                resumeText = await this.pdfTool.readPdfFromBuffer(fileBuffer);
+            } else if (mapped.resume_url) {
+                resumeText = await this.fetchResumeText(mapped.resume_url);
+            }
+
+            currentStage = "parse";
+            const aiProfile = resumeText ? await this.cvParser.parseCV(resumeText) : null;
+            
+            // If email wasn't in CSV but AI found it, use AI's
+            const email = mapped.email || aiProfile?.["Email"] || aiProfile?.email;
+            if (!email) throw new Error("Email could not be determined from CSV or Resume");
+            mapped.email = email;
+            result.email = email;
+
+            currentStage = "save";
             // We want a valid ObjectId string consistently across the platform.
             let foundUserId: string;
 
@@ -146,16 +194,6 @@ export class SourcingService {
                 }
             }
 
-            let resumeText = "";
-            if (mapped.resume_url) {
-                resumeText = await this.fetchResumeText(mapped.resume_url);
-            }
-
-            currentStage = "parse";
-            // AI results will now follow the Hackathon Schema via SourcingAIService
-            const aiProfile = resumeText ? await this.cvParser.parseCV(resumeText) : null;
-            
-            currentStage = "save";
             // Dual-profile mapping: platformProfile for platform usage, sourcing_profile for hackathon spec.
             const { platformProfile, sourcing_profile } = this.assembleProfile(mapped, aiProfile);
 

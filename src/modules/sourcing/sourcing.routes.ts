@@ -51,6 +51,20 @@ export class SourcingRoutes {
             (req, res) => this.controller.bulkImport(req, res)
         );
 
+        this.router.post(
+            "/batch-upload-cvs",
+            roleMiddleware.requireRole("recruiter"),
+            multer({
+                storage: multer.memoryStorage(),
+                limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
+                fileFilter: (req, file, cb) => {
+                    if (file.mimetype === "application/pdf") cb(null, true);
+                    else cb(new Error("Only PDF files are allowed"));
+                }
+            }).array("cvs", 50), // Up to 50 CVs at once
+            (req, res) => this.controller.batchUploadCVs(req, res)
+        );
+
         this.router.get(
             "/template",
             roleMiddleware.requireRole("recruiter"),

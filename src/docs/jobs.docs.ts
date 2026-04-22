@@ -344,7 +344,24 @@ export const jobPaths = {
             description:
                 "Returns all jobs with `status: published`. " +
                 "Scoring weights and config are hidden — this is the applicant-facing view. " +
+                "\n\n**Performance:** Results are paginated and cached for 30 seconds. " +
                 "\n\n**Auth:** Not required",
+            parameters: [
+                {
+                    name: "page",
+                    in: "query",
+                    required: false,
+                    schema: { type: "integer", default: 1 },
+                    description: "Page number for pagination"
+                },
+                {
+                    name: "limit",
+                    in: "query",
+                    required: false,
+                    schema: { type: "integer", default: 10 },
+                    description: "Number of jobs per page"
+                }
+            ],
             responses: {
                 "200": {
                     description: "List of published jobs",
@@ -543,8 +560,25 @@ export const jobPaths = {
             description:
                 "Returns all jobs posted by the authenticated recruiter (all statuses: draft, published, archived). " +
                 "Includes full scoring config and weights. " +
+                "\n\n**Performance:** Results are paginated and cached for 30 seconds. " +
                 "\n\n**Required role:** `recruiter`",
             security: [{ BearerAuth: [] }],
+            parameters: [
+                {
+                    name: "page",
+                    in: "query",
+                    required: false,
+                    schema: { type: "integer", default: 1 },
+                    description: "Page number for pagination"
+                },
+                {
+                    name: "limit",
+                    in: "query",
+                    required: false,
+                    schema: { type: "integer", default: 10 },
+                    description: "Number of jobs per page"
+                }
+            ],
             responses: {
                 "200": {
                     description: "Recruiter's jobs",

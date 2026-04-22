@@ -14,13 +14,13 @@ const allowDevOverride = process.env.ALLOW_DEVELOPMENT_CERTS === 'true';
 if (allowInvalidCerts && !allowDevOverride) {
 	throw new Error(
 		'SECURITY ALERT: MONGODB_TLS_ALLOW_INVALID_CERTS is enabled but ALLOW_DEVELOPMENT_CERTS is not. ' +
-			'This option bypasses TLS certificate verification and should NEVER be used in production. ' +
-			'If you are in a local development environment, set ALLOW_DEVELOPMENT_CERTS=true to proceed.'
+		'This option bypasses TLS certificate verification and should NEVER be used in production. ' +
+		'If you are in a local development environment, set ALLOW_DEVELOPMENT_CERTS=true to proceed.'
 	);
 }
 
 const client = new MongoClient(mongodbUri, {
-	serverSelectionTimeoutMS: 10000,
+	serverSelectionTimeoutMS: 30000,
 	tlsAllowInvalidCertificates: allowInvalidCerts,
 });
 
@@ -42,6 +42,10 @@ export async function getDb(): Promise<Db> {
 				console.error(
 					'Mongo TLS handshake failed. Check Atlas IP whitelist, URI credentials, local network/proxy, and try Node 20 LTS if you are on Node 22.'
 				);
+			} else if (/selection timed out/i.test(err.message)) {
+				console.error(
+					'Mongo connection timed out. This is usually caused by your IP address not being whitelisted in MongoDB Atlas or a firewall blocking the connection.'
+				);
 			}
 
 			throw error;
@@ -49,4 +53,9 @@ export async function getDb(): Promise<Db> {
 	})();
 
 	return dbPromise;
+}
+
+export async function closeConnection(): Promise<void> {
+	await client.close();
+	console.log('Mongo disconnected');
 }

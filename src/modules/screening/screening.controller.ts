@@ -16,18 +16,15 @@ export class ScreeningController {
             const recruiterId = (req as any).user?._id;
             const jobId       = req.params.jobId as string;
 
-            const shortlist = await this.service.screen(jobId, recruiterId);
+            // Start background screening
+            this.service.screen(jobId, recruiterId).catch(err => {
+                logger.error(`[ScreeningController] Background screening failed for job ${jobId}: ${err.message}`);
+            });
 
-            // Return empty array with a message if no candidates were found
-            if (shortlist.length === 0) {
-                return res.status(200).json({
-                    success: true,
-                    message: "No eligible candidates found for this job.",
-                    data: []
-                });
-            }
-
-            res.status(200).json({ success: true, data: shortlist });
+            res.status(202).json({ 
+                success: true, 
+                message: "AI screening has started. It may take a minute to process all candidates. Please refresh the shortlist shortly." 
+            });
         } catch (error: any) {
             const message = error?.message ?? String(error);
             const stack   = error?.stack   ?? "";
@@ -62,7 +59,15 @@ export class ScreeningController {
                 limit = parsed as 10 | 20;
             }
 
+            const cacheKey = `shortlist:${jobId}:${limit}`;
+            const { cache } = await import("@/shared/utils/cache.js");
+            const cached = cache.get<any[]>(cacheKey);
+            if (cached) {
+                return res.status(200).json({ success: true, data: cached });
+            }
+
             const shortlist = await this.service.getShortlist(jobId, recruiterId, limit);
+            cache.set(cacheKey, shortlist, 30 * 1000); // 30 seconds cache
             res.status(200).json({ success: true, data: shortlist });
         } catch (error: any) {
             const message = error?.message ?? String(error);

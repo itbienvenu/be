@@ -1,4 +1,5 @@
-import { PDFParse } from "pdf-parse";
+import * as pdfImport from "pdf-parse";
+const pdf = (pdfImport as any).default || pdfImport;
 import { v2 as cloudinary } from "cloudinary";
 import { ServiceError } from "./custom-errors.js";
 import dotenv from "dotenv";
@@ -75,8 +76,7 @@ export class PDFTool {
      */
     async readPdfFromBuffer(buffer: Buffer): Promise<string> {
         try {
-            const pdf = new PDFParse({ data: buffer });
-            const data = await pdf.getText();
+            const data = await pdf(buffer);
 
             const text = data.text?.trim();
 

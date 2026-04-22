@@ -86,6 +86,13 @@ export class JobRoutes {
             (req, res) => this.jobController.unarchiveJob(req, res)
         );
 
+        // Recruiter: delete a job (allowed for draft jobs)
+        this.router.delete(
+            "/:id",
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.jobController.deleteJob(req, res)
+        );
+
         // Public route to get a single job by ID (moved to bottom to avoid shadowing)
         this.router.get("/:id", (req, res) => this.jobController.getJobById(req, res));
     }

@@ -47,12 +47,23 @@ export class ScreeningRepository {
             { $match: { jobId: new ObjectId(jobId), status: { $in: ["pending", "reviewed"] } } },
 
             // Join with applicants collection on applicantId → userId
-            // Note: applicantId is stored as ObjectId, userId in applicants is also ObjectId
+            // Robust Join: Matches regardless of whether userId is stored as String or ObjectId
             {
                 $lookup: {
                     from: "applicants",
-                    localField: "applicantId",
-                    foreignField: "userId",
+                    let: { applicant_id: "$applicantId" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $or: [
+                                        { $eq: ["$userId", "$$applicant_id"] },
+                                        { $eq: [{ $toString: "$userId" }, { $toString: "$$applicant_id" }] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
                     as: "applicant"
                 }
             },
@@ -118,8 +129,19 @@ export class ScreeningRepository {
             {
                 $lookup: {
                     from: "applicants",
-                    localField: "applicantId",
-                    foreignField: "userId",
+                    let: { applicant_id: "$applicantId" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $or: [
+                                        { $eq: ["$userId", "$$applicant_id"] },
+                                        { $eq: [{ $toString: "$userId" }, { $toString: "$$applicant_id" }] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
                     as: "applicant"
                 }
             },
