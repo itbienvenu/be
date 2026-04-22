@@ -1,5 +1,5 @@
 import { JobService } from "./job.service.js";
-import { JobAIService } from "../ai/ai.service.js";
+import { JobAIService, JobGeneratorAIService } from "../ai/ai.service.js";
 import { type Request, type Response } from "express";
 import logger from "@/shared/utils/logger.js";
 import { validateJob } from "@/shared/utils/validator.js";
@@ -9,10 +9,12 @@ import type { JobJSON, JobStatus } from "./job.types.js";
 export class JobController {
     private jobService: JobService;
     private jobAIService: JobAIService;
+    private jobGeneratorAIService: JobGeneratorAIService;
 
     constructor() {
         this.jobService = new JobService();
         this.jobAIService = new JobAIService();
+        this.jobGeneratorAIService = new JobGeneratorAIService();
     }
 
     private getPagination(req: Request): { page: number, limit: number } {
@@ -44,6 +46,13 @@ export class JobController {
             if (typeof description !== "string" || !description.trim()) {
                 return res.status(400).json({ success: false, message: "Job description is required" });
             }
+
+            if (description.length > 10000) {
+                return res.status(413).json({ 
+                    success: false, 
+                    message: "Job description is too long (max 10,000 characters)" 
+                });
+            }
             const structuredJob = await this.jobAIService.generateStructuredJob(description.trim());
 
             if (!structuredJob) {
@@ -58,6 +67,39 @@ export class JobController {
         } catch (error: any) {
             logger.error("CREATE_JOB_ERROR", error);
             res.status(500).json({ success: false, message: "Failed to create job" });
+        }
+    }
+
+    /**
+     * Generate a full job description from a simple input using AI
+     */
+    async generateJobDescription(req: Request, res: Response) {
+        try {
+            const { description } = req.body;
+            if (typeof description !== "string" || !description.trim()) {
+                return res.status(400).json({ success: false, message: "Simple job description is required" });
+            }
+
+            if (description.length > 5000) {
+                return res.status(413).json({ 
+                    success: false, 
+                    message: "Input notes are too long (max 5,000 characters)" 
+                });
+            }
+
+            const result = await this.jobGeneratorAIService.generateFullDescription(description.trim());
+
+            if (!result) {
+                return res.status(500).json({ success: false, message: "Failed to generate job description" });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: result
+            });
+        } catch (error: any) {
+            logger.error("GENERATE_JOB_DESCRIPTION_ERROR", error);
+            res.status(500).json({ success: false, message: "Failed to generate job description" });
         }
     }
 

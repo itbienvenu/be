@@ -1,7 +1,7 @@
 import JobController from "./job.controller.js";
 import { Router } from "express";
 import { AuthMiddleware } from "@/middlewares/auth.middleware.js";
-import { jobCreationRateLimiter } from "@/shared/middleware/rate-limit.middleware.js";
+import { jobCreationRateLimiter, aiGenerationRateLimiter } from "@/shared/middleware/rate-limit.middleware.js";
 
 export class JobRoutes {
     public router: Router;
@@ -49,6 +49,15 @@ export class JobRoutes {
             this.authMiddleware.requireRole("recruiter"),
             jobCreationRateLimiter,
             (req, res) => this.jobController.createJobManually(req, res)
+        );
+
+        // AI Route: Generate a professional job description from a simple draft
+        // Stricter rate limit (5/min) because AI calls are expensive
+        this.router.post(
+            "/generate-description",
+            this.authMiddleware.requireRole("recruiter"),
+            aiGenerationRateLimiter,
+            (req, res) => this.jobController.generateJobDescription(req, res)
         );
 
         // Recruiter: patch (edit) a draft job

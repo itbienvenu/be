@@ -1,5 +1,6 @@
 import { ApplicantRepository } from "./applicant.repository.js";
-import { CVParserService } from "@/modules/ai/ai.service.js";
+import { JobRepository } from "@/modules/job/job.repository.js";
+import { CVParserService, CoverLetterAIService } from "@/modules/ai/ai.service.js";
 import { PDFTool } from "@/shared/utils/pdfs-tool.js";
 import { CloudinaryTool } from "@/shared/utils/cloudinary-tool.js";
 import logger from "@/shared/utils/logger.js";
@@ -7,13 +8,17 @@ import type { ApplicantJSON, ApplicantProfileJSON } from "./applicant.types.js";
 
 export class ApplicantService {
     private applicantRepo: ApplicantRepository;
+    private jobRepo: JobRepository;
     private cvParser: CVParserService;
+    private coverLetterAI: CoverLetterAIService;
     private pdfTool: PDFTool;
     private cloudinary: CloudinaryTool;
 
     constructor() {
         this.applicantRepo = new ApplicantRepository();
+        this.jobRepo = new JobRepository();
         this.cvParser = new CVParserService();
+        this.coverLetterAI = new CoverLetterAIService();
         this.pdfTool = new PDFTool();
         this.cloudinary = new CloudinaryTool();
     }
@@ -62,14 +67,14 @@ export class ApplicantService {
      */
     async updateProfile(userId: string, data: any): Promise<ApplicantJSON | null> {
         logger.info(`ApplicantService: Restructuring input payload for user ${userId.substring(0, 5)}...`);
-        const structured: any = {
-            profile: data.profile || {}
-        };
+        
+        // We use a flat object with dot notation to avoid overwriting the whole 'profile' object in Mongo
+        const flatUpdate: any = {};
 
-        // 1. Move root-level CV fields
-        if (data.cvUrl) structured.cvUrl = data.cvUrl;
-        if (data.cvPublicId) structured.cvPublicId = data.cvPublicId;
-        if (data.cvRawText) structured.cvRawText = data.cvRawText;
+        // 1. Map top-level CV fields
+        if (data.cvUrl) flatUpdate.cvUrl = data.cvUrl;
+        if (data.cvPublicId) flatUpdate.cvPublicId = data.cvPublicId;
+        if (data.cvRawText) flatUpdate.cvRawText = data.cvRawText;
 
         // 2. Identify profile-specific fields
         const profileFields = [
@@ -80,15 +85,24 @@ export class ApplicantService {
             "preferences", "area_of_expertise"
         ];
 
-        // 3. Collect flat profile fields from the root
-        for (const field of profileFields) {
-            if (data[field] !== undefined) {
-                structured.profile[field] = data[field];
+        // 3. Process nested 'profile' object if it exists (with whitelisting)
+        if (data.profile && typeof data.profile === "object") {
+            for (const [key, value] of Object.entries(data.profile)) {
+                if (value !== undefined && profileFields.includes(key)) {
+                    flatUpdate[`profile.${key}`] = value;
+                }
             }
         }
 
-        logger.info(`ApplicantService: Executing upsertByUserId for ${userId.substring(0, 5)}...`);
-        const success = await this.applicantRepo.upsertByUserId(userId, structured);
+        // 4. Collect flat profile fields from the root
+        for (const field of profileFields) {
+            if (data[field] !== undefined) {
+                flatUpdate[`profile.${field}`] = data[field];
+            }
+        }
+
+        logger.info(`ApplicantService: Executing upsertByUserId with ${Object.keys(flatUpdate).length} fields...`);
+        const success = await this.applicantRepo.upsertByUserId(userId, flatUpdate);
         if (success) {
             return await this.applicantRepo.findByUserId(userId);
         }
@@ -121,10 +135,10 @@ export class ApplicantService {
             "preferences", "area_of_expertise"
         ];
 
-        // If the user sent a 'profile' object, process its keys
+        // If the user sent a 'profile' object, process its keys (with whitelisting)
         if (partial.profile && typeof partial.profile === "object") {
             for (const [key, value] of Object.entries(partial.profile)) {
-                if (value !== undefined) {
+                if (value !== undefined && profileFields.includes(key)) {
                     flatUpdate[`profile.${key}`] = value;
                 }
             }
@@ -147,5 +161,51 @@ export class ApplicantService {
             return await this.applicantRepo.findByUserId(userId);
         }
         return null;
+    }
+
+    /**
+     * Generate a personalized cover letter using AI
+     */
+    async generateCoverLetter(userId: string, data: { jobId: string; cvText?: string | undefined; instructions?: string | undefined; cvFile?: Buffer | undefined }) {
+        let finalCvText = data.cvText;
+
+        // 1. Fetch Job Description using jobId
+        const jobResult = await this.jobRepo.getJobById(data.jobId, true);
+        if (!jobResult || !jobResult.data) {
+            throw new Error("Job not found or not published");
+        }
+        const jobDescription = jobResult.data.description;
+        const jobTitle = jobResult.data.title;
+        const fullJobContext = `Job Title: ${jobTitle}\n\nDescription:\n${jobDescription}`;
+
+        // 2. If CV file is provided, extract text from it
+        if (data.cvFile) {
+            finalCvText = await this.pdfTool.readPdfFromBuffer(data.cvFile);
+        }
+
+        // 3. If still no CV text, try to fetch it from the user's saved profile
+        if (!finalCvText) {
+            logger.info(`CoverLetter: Fetching profile for user ${userId} to get CV text...`);
+            const profile = await this.applicantRepo.findByUserId(userId);
+            if (profile?.cvRawText) {
+                logger.info(`CoverLetter: Found cvRawText in profile (${profile.cvRawText.length} chars)`);
+                finalCvText = profile.cvRawText;
+            } else {
+                logger.warn(`CoverLetter: No cvRawText found in profile for user ${userId}`);
+            }
+        }
+
+        if (!finalCvText) {
+            throw new Error("No CV content provided or found in profile");
+        }
+
+        // 4. Call AI to generate the letter
+        const result = await this.coverLetterAI.generateCoverLetter(finalCvText, fullJobContext, data.instructions);
+        
+        if (!result) {
+            throw new Error("AI failed to generate cover letter");
+        }
+
+        return result;
     }
 }

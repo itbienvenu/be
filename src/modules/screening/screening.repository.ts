@@ -32,7 +32,7 @@ export class ScreeningRepository {
     }
 
     /**
-     * Fetch all applications eligible for screening (status: pending or reviewed)
+     * Fetch all applications eligible for screening (status: pending, reviewed, shortlisted, or rejected)
      * for a given job, joined with the applicant's profile.
      *
      * Uses a $lookup aggregation so we get the full applicant profile in one query
@@ -43,8 +43,14 @@ export class ScreeningRepository {
         const db = await getDb();
 
         const results = await db.collection("applications").aggregate([
-            // Match only pending/reviewed applications for this job
-            { $match: { jobId: new ObjectId(jobId), status: { $in: ["pending", "reviewed"] } } },
+            // Match applications eligible for screening.
+            // We include 'shortlisted' and 'rejected' to allow re-screening (e.g. after updating job requirements).
+            { 
+                $match: { 
+                    jobId: new ObjectId(jobId), 
+                    status: { $in: ["pending", "reviewed", "shortlisted", "rejected"] } 
+                } 
+            },
 
             // Join with applicants collection on applicantId → userId
             // Robust Join: Matches regardless of whether userId is stored as String or ObjectId

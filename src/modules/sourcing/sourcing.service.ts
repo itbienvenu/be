@@ -73,7 +73,7 @@ export class SourcingService {
             };
             const mockMapping: ColumnMapping = { email: "Email" };
             
-            await this.processCandidateRow(mockRow, mockMapping, jobId, file.buffer);
+            await this.processCandidateRow(mockRow, mockMapping, jobId, file.buffer, file.originalname);
         } catch (error: any) {
             logger.error(`[Sourcing] Failed to process CV ${file.originalname}: ${error.message}`);
         }
@@ -161,7 +161,8 @@ export class SourcingService {
         row: RawCandidateRow,
         mapping: ColumnMapping,
         jobId: string,
-        fileBuffer?: Buffer
+        fileBuffer?: Buffer,
+        filename?: string
     ): Promise<CandidateProcessResult> {
         const result: CandidateProcessResult = {
             row_number: row.row_number,
@@ -180,7 +181,7 @@ export class SourcingService {
             let resumePublicId = "";
 
             if (fileBuffer) {
-                const upload = await this.pdfTool.uploadToCloudinary(fileBuffer);
+                const upload = await this.pdfTool.uploadToCloudinary(fileBuffer, filename);
                 mapped.resume_url = upload.url;
                 resumePublicId = upload.publicId;
                 resumeText = await this.pdfTool.readPdfFromBuffer(fileBuffer);

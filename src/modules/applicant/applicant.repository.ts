@@ -33,11 +33,54 @@ export class ApplicantRepository {
     async upsertByUserId(userId: string, data: Omit<ApplicantJSON, "_id" | "userId">): Promise<boolean> {
         const db = await getDb();
         const { _id, userId: _, ...sanitizedData } = data as any;
+        
+        // Handle both nested profile.email and flat "profile.email" keys
+        const email = sanitizedData.profile?.email || 
+                      sanitizedData.profile?.Email || 
+                      sanitizedData["profile.email"] || 
+                      sanitizedData["profile.Email"];
 
-        const query = ObjectId.isValid(userId)
-            ? { userId: new ObjectId(userId) }
-            : { userId: userId };
+        const userObjectId = ObjectId.isValid(userId) ? new ObjectId(userId) : userId;
 
+        // 1. Check if this email belongs to a "ghost" profile (imported CV without a userId)
+        if (email) {
+            const existingByEmail = await db.collection(this.collection).findOne({
+                $or: [{ "profile.email": email }, { "profile.Email": email }],
+                userId: { $ne: userObjectId }
+            });
+
+            if (existingByEmail && !existingByEmail.userId) {
+                const currentProfile = await db.collection(this.collection).findOne({ userId: userObjectId });
+                
+                const mergePayload: any = { 
+                    userId: userObjectId, 
+                    updatedAt: new Date() 
+                };
+
+                // Preserve CV fields from the temporary record if the ghost doesn't have them
+                if (currentProfile) {
+                    if (currentProfile.cvRawText) mergePayload.cvRawText = currentProfile.cvRawText;
+                    if (currentProfile.cvUrl) mergePayload.cvUrl = currentProfile.cvUrl;
+                    if (currentProfile.cvPublicId) mergePayload.cvPublicId = currentProfile.cvPublicId;
+                }
+
+                // 1. Update the ghost profile first to become the main profile
+                await db.collection(this.collection).updateOne(
+                    { _id: existingByEmail._id },
+                    { $set: mergePayload }
+                );
+
+                // 2. Delete the redundant temporary record if it exists
+                // We exclude the record we just updated using its _id
+                await db.collection(this.collection).deleteOne({ 
+                    userId: userObjectId, 
+                    _id: { $ne: existingByEmail._id } 
+                });
+            }
+        }
+
+        // 2. Standard Upsert
+        const query = { userId: userObjectId };
         const result = await db.collection(this.collection).updateOne(
             query,
             {
@@ -46,12 +89,13 @@ export class ApplicantRepository {
                     updatedAt: new Date()
                 },
                 $setOnInsert: {
-                    userId: ObjectId.isValid(userId) ? new ObjectId(userId) : userId,
+                    userId: userObjectId,
                     createdAt: new Date()
                 }
             },
             { upsert: true }
         );
+        
         if (result.acknowledged) {
             cache.delete(`applicant:${userId}`);
         }
