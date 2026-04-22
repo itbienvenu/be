@@ -51,19 +51,8 @@ export class ScreeningRepository {
             {
                 $lookup: {
                     from: "applicants",
-                    let: { applicant_id: "$applicantId" },
-                    pipeline: [
-                        {
-                            $match: {
-                                $expr: {
-                                    $or: [
-                                        { $eq: ["$userId", "$$applicant_id"] },
-                                        { $eq: [{ $toString: "$userId" }, { $toString: "$$applicant_id" }] }
-                                    ]
-                                }
-                            }
-                        }
-                    ],
+                    localField: "applicantId",
+                    foreignField: "userId",
                     as: "applicant"
                 }
             },
@@ -129,19 +118,8 @@ export class ScreeningRepository {
             {
                 $lookup: {
                     from: "applicants",
-                    let: { applicant_id: "$applicantId" },
-                    pipeline: [
-                        {
-                            $match: {
-                                $expr: {
-                                    $or: [
-                                        { $eq: ["$userId", "$$applicant_id"] },
-                                        { $eq: [{ $toString: "$userId" }, { $toString: "$$applicant_id" }] }
-                                    ]
-                                }
-                            }
-                        }
-                    ],
+                    localField: "applicantId",
+                    foreignField: "userId",
                     as: "applicant"
                 }
             },

@@ -39,9 +39,24 @@ export class SourcingService {
         this.jobRepo = new JobRepository();
     }
 
+    /**
+     * Verify that the job exists and belongs to the specified recruiter.
+     * Throws an error if validation fails.
+     */
+    async validateAccess(jobId: string, recruiterId: string): Promise<any> {
+        const job = await this.jobRepo.getJobById(jobId, false, recruiterId);
+        if (!job.data) {
+            throw new Error("Job not found or unauthorized");
+        }
+        return job.data;
+    }
+
     async processBatchCVs(jobId: string, files: any[], recruiterId: string): Promise<void> {
-        logger.info(`[Sourcing] Starting batch CV upload for job ${jobId} (Total: ${files.length})`);
+        logger.info(`[Sourcing] Starting batch CV upload for job ${jobId} by recruiter ${recruiterId} (Total: ${files.length})`);
         
+        // Security check: ensure recruiter owns the job before processing files
+        await this.validateAccess(jobId, recruiterId);
+
         const batchSize = 3; // Smaller batch for heavy AI processing
         for (let i = 0; i < files.length; i += batchSize) {
             const batch = files.slice(i, i + batchSize);
@@ -51,11 +66,10 @@ export class SourcingService {
 
     private async processSingleCV(file: { buffer: Buffer; originalname: string }, jobId: string) {
         try {
-            const rawText = await this.pdfTool.readPdfFromBuffer(file.buffer);
             // We use a mock "row" and "mapping" for the existing pipeline
             const mockRow: RawCandidateRow = {
-                row_number: 0,
-                data: { "Email": "pending@extraction.com" } // Will be overwritten by AI
+                row_number: Math.floor(Math.random() * 1000000),
+                data: { "Email": "" } // Will be overwritten by AI
             };
             const mockMapping: ColumnMapping = { email: "Email" };
             
@@ -69,14 +83,7 @@ export class SourcingService {
         try {
             logger.info(`[Sourcing] Starting bulk import for job ${req.jobId} by recruiter ${recruiterId}`);
 
-            const job = await this.jobRepo.getJobById(req.jobId, false, recruiterId);
-            if (!job.data) {
-                return {
-                    success: false,
-                    data: { imported: 0, failed: 0, total: 0, jobId: req.jobId, results: [] },
-                    message: "Job not found or unauthorized",
-                };
-            }
+            await this.validateAccess(req.jobId, recruiterId);
 
             const rows = this.parseFile(req.file.buffer, req.file.originalname);
             const results: CandidateProcessResult[] = [];
@@ -86,9 +93,22 @@ export class SourcingService {
                 const batch = rows.slice(i, i + batchSize);
                 logger.info(`[Sourcing] Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} candidates)...`);
                 
-                const batchResults = await Promise.all(
-                    batch.map(row => this.processCandidateRow(row, req.columnMapping, req.jobId))
-                );
+                let batchResults: CandidateProcessResult[];
+
+                if (req.skipInvalidRows) {
+                    // Performance mode: process batch in parallel
+                    batchResults = await Promise.all(
+                        batch.map(row => this.processCandidateRow(row, req.columnMapping, req.jobId))
+                    );
+                } else {
+                    // Strict mode: process sequentially to ensure we abort on first error
+                    batchResults = [];
+                    for (const row of batch) {
+                        const r = await this.processCandidateRow(row, req.columnMapping, req.jobId);
+                        batchResults.push(r);
+                        if (!r.success) break;
+                    }
+                }
                 
                 results.push(...batchResults);
 
@@ -157,8 +177,12 @@ export class SourcingService {
 
             currentStage = "fetch";
             let resumeText = "";
+            let resumePublicId = "";
 
             if (fileBuffer) {
+                const upload = await this.pdfTool.uploadToCloudinary(fileBuffer);
+                mapped.resume_url = upload.url;
+                resumePublicId = upload.publicId;
                 resumeText = await this.pdfTool.readPdfFromBuffer(fileBuffer);
             } else if (mapped.resume_url) {
                 resumeText = await this.fetchResumeText(mapped.resume_url);
@@ -203,6 +227,7 @@ export class SourcingService {
                 const updatePayload: Record<string, any> = {
                     cvRawText: resumeText || existingApplicant.cvRawText,
                     cvUrl: mapped.resume_url || existingApplicant.cvUrl,
+                    cvPublicId: resumePublicId || existingApplicant.cvPublicId,
                     sourcing_profile: sourcing_profile // Hackathon data usually gets full-reset per sourcing run
                 };
 
@@ -216,7 +241,7 @@ export class SourcingService {
                 await this.applicantRepo.createImported({
                     userId: foundUserId,
                     cvUrl: mapped.resume_url || "",
-                    cvPublicId: `src-${Date.now()}-${row.row_number}`,
+                    cvPublicId: resumePublicId || `src-${Date.now()}-${row.row_number}`,
                     cvRawText: resumeText,
                     profile: platformProfile as any,
                     sourcing_profile: sourcing_profile as any

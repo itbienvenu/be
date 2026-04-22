@@ -24,6 +24,11 @@ export class JobRepository {
         }
 
         const job = await db.collection("jobs").insertOne(payload);
+        
+        // Invalidate list caches
+        cache.deleteByPrefix("jobs:all:");
+        cache.deleteByPrefix(`jobs:recruiter:${recruiterId}:`);
+
         return {
             success: true,
             data: {
@@ -245,6 +250,9 @@ export class JobRepository {
         if (result.acknowledged) {
             cache.delete(`job:${id}:true:public`);
             cache.delete(`job:${id}:false:${recruiterId}`);
+            // Invalidate list caches
+            cache.deleteByPrefix("jobs:all:");
+            cache.deleteByPrefix(`jobs:recruiter:${recruiterId}:`);
         }
         return result.acknowledged;
     }
@@ -269,6 +277,9 @@ export class JobRepository {
         if (result.acknowledged) {
             cache.delete(`job:${id}:true:public`);
             cache.delete(`job:${id}:false:${recruiterId}`);
+            // Invalidate list caches
+            cache.deleteByPrefix("jobs:all:");
+            cache.deleteByPrefix(`jobs:recruiter:${recruiterId}:`);
         }
         return result.acknowledged;
     }
@@ -293,6 +304,9 @@ export class JobRepository {
         if (result.acknowledged) {
             cache.delete(`job:${id}:true:public`);
             cache.delete(`job:${id}:false:${recruiterId}`);
+            // Invalidate list caches
+            cache.deleteByPrefix("jobs:all:");
+            cache.deleteByPrefix(`jobs:recruiter:${recruiterId}:`);
         }
         return result.acknowledged;
     }
@@ -317,6 +331,9 @@ export class JobRepository {
         if (result.acknowledged) {
             cache.delete(`job:${id}:true:public`);
             cache.delete(`job:${id}:false:${recruiterId}`);
+            // Invalidate list caches
+            cache.deleteByPrefix("jobs:all:");
+            cache.deleteByPrefix(`jobs:recruiter:${recruiterId}:`);
         }
         return result.acknowledged;
     }
@@ -341,6 +358,9 @@ export class JobRepository {
         if (result.acknowledged) {
             cache.delete(`job:${id}:true:public`);
             cache.delete(`job:${id}:false:${recruiterId}`);
+            // Invalidate list caches
+            cache.deleteByPrefix("jobs:all:");
+            cache.deleteByPrefix(`jobs:recruiter:${recruiterId}:`);
         }
         return result.acknowledged;
     }
@@ -364,8 +384,16 @@ export class JobRepository {
             throw new Error(`Cannot delete job in '${exists.metadata.status}' state. Only draft jobs can be deleted.`);
         }
 
+        // Cascading delete: Remove all applications associated with this job
+        await db.collection("applications").deleteMany({
+            jobId: new ObjectId(id)
+        });
+
         cache.delete(`job:${id}:true:public`);
         cache.delete(`job:${id}:false:${recruiterId}`);
+        // Invalidate list caches
+        cache.deleteByPrefix("jobs:all:");
+        cache.deleteByPrefix(`jobs:recruiter:${recruiterId}:`);
         return true;
     }
 }

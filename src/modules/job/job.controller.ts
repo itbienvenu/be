@@ -15,6 +15,25 @@ export class JobController {
         this.jobAIService = new JobAIService();
     }
 
+    private getPagination(req: Request): { page: number, limit: number } {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+
+        if (isNaN(page) || page < 1) {
+            const error: any = new Error("Page number must be a positive integer >= 1");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        if (isNaN(limit) || limit < 1 || limit > 100) {
+            const error: any = new Error("Limit must be a positive integer between 1 and 100");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        return { page, limit };
+    }
+
     async createJob(req: Request, res: Response) {
         try {
             const userId = (req as any).user?._id;
@@ -148,15 +167,15 @@ export class JobController {
 
     async getAllJobs(req: Request, res: Response) {
         try {
-            const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 10;
+            const { page, limit } = this.getPagination(req);
 
             // Default to public view which omits sensitive fields
             const result = await this.jobService.getAllJobs(true, page, limit);
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("GET_ALL_JOBS_ERROR", error);
-            res.status(500).json({ success: false, message: "Failed to fetch jobs" });
+            const status = error.statusCode || 500;
+            res.status(status).json({ success: false, message: error.message || "Failed to fetch jobs" });
         }
     }
 
@@ -205,14 +224,14 @@ export class JobController {
             if (!recruiterId) {
                 return res.status(401).json({ success: false, message: "Unauthorized: Missing recruiter ID" });
             }
-            const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 10;
+            const { page, limit } = this.getPagination(req);
 
             const result = await this.jobService.getJobsByRecruiter(recruiterId, page, limit);
             res.status(200).json(result);
         } catch (error: any) {
             logger.error("GET_RECRUITER_JOBS_ERROR", error);
-            res.status(500).json({ success: false, message: "Failed to fetch your jobs" });
+            const status = error.statusCode || 500;
+            res.status(status).json({ success: false, message: error.message || "Failed to fetch your jobs" });
         }
     }
 

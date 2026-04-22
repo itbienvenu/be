@@ -94,7 +94,7 @@ const server = app.listen(port, async () => {
   logger.info(`Server is running at http://localhost:${port}`);
   logger.info(`API v1 available at http://localhost:${port}/api/v1`);
 
-  // await initIndexes();
+  await initIndexes();
 });
 
 const shutdown = async (signal: string) => {

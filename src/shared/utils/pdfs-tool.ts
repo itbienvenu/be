@@ -1,5 +1,4 @@
-import * as pdfImport from "pdf-parse";
-const pdf = (pdfImport as any).default || pdfImport;
+import { PDFParse } from "pdf-parse";
 import { v2 as cloudinary } from "cloudinary";
 import { ServiceError } from "./custom-errors.js";
 import dotenv from "dotenv";
@@ -76,9 +75,10 @@ export class PDFTool {
      */
     async readPdfFromBuffer(buffer: Buffer): Promise<string> {
         try {
-            const data = await pdf(buffer);
+            const parser = new PDFParse({ data: buffer });
+            const result = await parser.getText();
 
-            const text = data.text?.trim();
+            const text = result.text?.trim();
 
             if (!text || text.length < 50) {
                 throw new Error("Invalid or empty PDF content");

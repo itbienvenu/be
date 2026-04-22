@@ -2,6 +2,11 @@
 class SimpleCache {
     private cache = new Map<string, { value: any, expiresAt: number }>();
 
+    constructor() {
+        // Automatically clear expired entries every 5 minutes to prevent memory leaks
+        setInterval(() => this.clearExpired(), 5 * 60 * 1000).unref();
+    }
+
     /**
      * Set a value in the cache.
      * @param key Cache key
@@ -46,6 +51,18 @@ class SimpleCache {
         const now = Date.now();
         for (const [key, item] of this.cache.entries()) {
             if (now > item.expiresAt) {
+                this.cache.delete(key);
+            }
+        }
+    }
+
+    /**
+     * Delete all items with keys starting with the given prefix.
+     * @param prefix Key prefix
+     */
+    deleteByPrefix(prefix: string): void {
+        for (const key of this.cache.keys()) {
+            if (key.startsWith(prefix)) {
                 this.cache.delete(key);
             }
         }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ScreeningScorer } from './screening.scorer.js';
 import type { JobJSON } from '@/modules/job/job.types.js';
+import type { SkillSignal } from './screening.types.js';
 
 describe('ScreeningScorer', () => {
     const scorer = new ScreeningScorer();
@@ -32,16 +33,16 @@ describe('ScreeningScorer', () => {
     });
 
     it('should compute skills score as weighted average', () => {
-        const signals = [
+        const signals: SkillSignal[] = [
             { skill_name: "React", score: 1.0 },
-            { skill_name: "Node.js", score: 0.0 }
+            { skill_name: "Node.js", score: 0 }
         ];
         // (1.0 * 0.5 + 0.0 * 0.5) / 1.0 = 0.5
         expect(scorer.computeSkillsScore(mockJob.skills!, signals)).toBe(0.5);
     });
 
     it('should handle missing skill signals by defaulting to 0', () => {
-        const signals = [
+        const signals: SkillSignal[] = [
             { skill_name: "React", score: 1.0 }
             // Node.js missing
         ];

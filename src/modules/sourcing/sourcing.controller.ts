@@ -29,6 +29,9 @@ export class SourcingController {
                 return res.status(400).json({ success: false, message: "Invalid columnMapping JSON" });
             }
 
+            // Synchronous validation before background work
+            await this.sourcingService.validateAccess(jobId, recruiterId);
+
             // Start background processing
             this.sourcingService.processBulkImport({
                 jobId,
@@ -49,7 +52,9 @@ export class SourcingController {
                 message: "Bulk import started in the background." 
             });
         } catch (error: any) {
-            res.status(500).json({ success: false, message: error.message });
+            const message = error.message;
+            const status = message.includes("unauthorized") || message.includes("not found") ? 403 : 500;
+            res.status(status).json({ success: false, message });
         }
     }
 
@@ -67,6 +72,9 @@ export class SourcingController {
                 return res.status(400).json({ success: false, message: "Missing jobId or CV files. Ensure you are sending files in the 'cvs' field." });
             }
 
+            // Synchronous validation before background work
+            await this.sourcingService.validateAccess(jobId, recruiterId);
+
             // Background process
             this.sourcingService.processBatchCVs(jobId, files, recruiterId).catch((err: Error) => {
                 logger.error(`[SourcingController] Batch CV upload failed: ${err.message}`);
@@ -77,7 +85,9 @@ export class SourcingController {
                 message: `Processing ${files.length} CVs in the background. They will appear in your dashboard shortly.`
             });
         } catch (error: any) {
-            res.status(500).json({ success: false, message: error.message });
+            const message = error.message;
+            const status = message.includes("unauthorized") || message.includes("not found") ? 403 : 500;
+            res.status(status).json({ success: false, message });
         }
     }
 

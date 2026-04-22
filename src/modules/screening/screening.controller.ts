@@ -16,6 +16,9 @@ export class ScreeningController {
             const recruiterId = (req as any).user?._id;
             const jobId       = req.params.jobId as string;
 
+            // Synchronous validation before starting background work
+            await this.service.validateOwnership(jobId, recruiterId);
+
             // Start background screening
             this.service.screen(jobId, recruiterId).catch(err => {
                 logger.error(`[ScreeningController] Background screening failed for job ${jobId}: ${err.message}`);
@@ -59,7 +62,10 @@ export class ScreeningController {
                 limit = parsed as 10 | 20;
             }
 
-            const cacheKey = `shortlist:${jobId}:${limit}`;
+            // Security: Always validate ownership before returning data (even from cache)
+            await this.service.validateOwnership(jobId, recruiterId);
+
+            const cacheKey = `shortlist:${jobId}:${recruiterId}:${limit}`;
             const { cache } = await import("@/shared/utils/cache.js");
             const cached = cache.get<any[]>(cacheKey);
             if (cached) {

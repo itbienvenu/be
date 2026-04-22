@@ -101,10 +101,18 @@ export abstract class BaseAIService<T> {
             }
         });
 
+        // 60-second timeout to prevent background workers from hanging indefinitely
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("AI_REQUEST_TIMEOUT")), 60000)
+        );
+
         try {
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-            });
+            const result = await Promise.race([
+                model.generateContent({
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                }),
+                timeoutPromise
+            ]) as any;
 
             const response = await result.response;
             const text = response.text();
@@ -127,11 +135,14 @@ export abstract class BaseAIService<T> {
 
             return parsed;
         } catch (err: any) {
-            // Handle Rate Limits (429)
-            if (err.message?.includes("429") || err.status === 429) {
+            const isTimeout = err.message === "AI_REQUEST_TIMEOUT";
+            const isRateLimit = err.message?.includes("429") || err.status === 429;
+
+            // Handle Retriable Failures (Rate Limits or Timeouts)
+            if (isRateLimit || isTimeout) {
                 if (retryCount < 3) {
                     const delayMs = Math.pow(2, retryCount) * 2000;
-                    console.warn(`AI Rate Limit (429) hit. Retrying in ${delayMs}ms... (Attempt ${retryCount + 1}/3)`);
+                    console.warn(`AI ${isTimeout ? "Timeout" : "Rate Limit"} hit. Retrying in ${delayMs}ms... (Attempt ${retryCount + 1}/3)`);
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     return this.callAI(input, retryCount + 1);
                 }

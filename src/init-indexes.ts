@@ -10,7 +10,8 @@ async function initIndexes() {
         await db.collection("jobs").createIndex({ recruiterId: 1 });
         await db.collection("jobs").createIndex({ "metadata.status": 1 });
 
-        await db.collection("applicants").createIndex({ email: 1 }, { unique: true, sparse: true });
+        await db.collection("applicants").createIndex({ "profile.email": 1 }, { unique: true, sparse: true });
+        await db.collection("applicants").createIndex({ "profile.Email": 1 }, { sparse: true });
         await db.collection("applicants").createIndex({ userId: 1 }, { unique: true, sparse: true });
 
         await db.collection("applications").createIndex({ jobId: 1 });

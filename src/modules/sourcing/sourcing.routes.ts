@@ -5,7 +5,7 @@ import { AuthMiddleware } from "@/middlewares/auth.middleware.js";
 import multer from "multer";
 
 const roleMiddleware = new AuthMiddleware();
-const upload = multer({
+const spreadsheetUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
@@ -25,10 +25,28 @@ const upload = multer({
     }
 });
 
-function handleUploadErrors(req: Request, res: Response, next: NextFunction) {
-    upload.single("file")(req, res, (err: any) => {
+const cvBatchUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === "application/pdf") cb(null, true);
+        else cb(new Error("Only PDF files are allowed"));
+    }
+}).array("cvs", 50);
+
+function handleSpreadsheetUploadErrors(req: Request, res: Response, next: NextFunction) {
+    spreadsheetUpload.single("file")(req, res, (err: any) => {
         if (err) {
             return res.status(400).json({ success: false, message: `File upload failed: ${err.message}` });
+        }
+        next();
+    });
+}
+
+function handleBatchUploadErrors(req: Request, res: Response, next: NextFunction) {
+    cvBatchUpload(req, res, (err: any) => {
+        if (err) {
+            return res.status(400).json({ success: false, message: `Batch CV upload failed: ${err.message}` });
         }
         next();
     });
@@ -47,21 +65,14 @@ export class SourcingRoutes {
         this.router.post(
             "/bulk-import",
             roleMiddleware.requireRole("recruiter"),
-            handleUploadErrors,
+            handleSpreadsheetUploadErrors,
             (req, res) => this.controller.bulkImport(req, res)
         );
 
         this.router.post(
             "/batch-upload-cvs",
             roleMiddleware.requireRole("recruiter"),
-            multer({
-                storage: multer.memoryStorage(),
-                limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
-                fileFilter: (req, file, cb) => {
-                    if (file.mimetype === "application/pdf") cb(null, true);
-                    else cb(new Error("Only PDF files are allowed"));
-                }
-            }).array("cvs", 50), // Up to 50 CVs at once
+            handleBatchUploadErrors,
             (req, res) => this.controller.batchUploadCVs(req, res)
         );
 
