@@ -1,5 +1,5 @@
 import { JobService } from "./job.service.js";
-import { JobAIService, JobGeneratorAIService } from "../ai/ai.service.js";
+import { JobAIService, JobGeneratorAIService, AIRateLimitError, AIError } from "../ai/ai.service.js";
 import { type Request, type Response } from "express";
 import logger from "@/shared/utils/logger.js";
 import { validateJob } from "@/shared/utils/validator.js";
@@ -65,6 +65,20 @@ export class JobController {
             const result = await this.jobService.createJob(structuredJob);
             res.status(201).json(result);
         } catch (error: any) {
+            if (error instanceof AIRateLimitError) {
+                return res.status(429).json({ 
+                    success: false, 
+                    message: "AI service is currently busy. Please try again in a few moments.",
+                    retryAfter: 30
+                });
+            }
+            if (error instanceof AIError) {
+                return res.status(503).json({ 
+                    success: false, 
+                    message: "AI service is temporarily unavailable. Please try again later." 
+                });
+            }
+
             logger.error("CREATE_JOB_ERROR", error);
             res.status(500).json({ success: false, message: "Failed to create job" });
         }
@@ -98,6 +112,19 @@ export class JobController {
                 data: result
             });
         } catch (error: any) {
+            if (error instanceof AIRateLimitError) {
+                return res.status(429).json({ 
+                    success: false, 
+                    message: "AI generator is busy. Please try again in a few moments." 
+                });
+            }
+            if (error instanceof AIError) {
+                return res.status(503).json({ 
+                    success: false, 
+                    message: "AI generator is temporarily unavailable." 
+                });
+            }
+
             logger.error("GENERATE_JOB_DESCRIPTION_ERROR", error);
             res.status(500).json({ success: false, message: "Failed to generate job description" });
         }

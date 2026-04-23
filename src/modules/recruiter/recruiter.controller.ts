@@ -77,4 +77,26 @@ export class RecruiterController {
             res.status(500).json({ success: false, message: "Internal server error" });
         }
     }
+
+    /**
+     * Get recruiter analytics
+     */
+    async getAnalytics(req: Request, res: Response) {
+        try {
+            const userId = (req as any).user?._id;
+            if (!userId) {
+                return res.status(401).json({ success: false, message: "Unauthorized" });
+            }
+
+            const stats = await this.recruiterService.getAnalytics(userId);
+
+            res.status(200).json({
+                success: true,
+                data: stats
+            });
+        } catch (error: any) {
+            logger.error("RECRUITER_ANALYTICS_ERROR", error.message);
+            res.status(500).json({ success: false, message: "Internal server error" });
+        }
+    }
 }

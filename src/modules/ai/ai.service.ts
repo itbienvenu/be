@@ -18,20 +18,44 @@ const coverLetterPrompt = readFileSync(new URL("./prompts/cover-letter.prompt.tx
 const coverLetterSchema = JSON.parse(readFileSync(new URL("../applicant/cover-letter.schema.json", import.meta.url), "utf-8"));
 const generateJobSchema = JSON.parse(readFileSync(new URL("../job/generate-job.schema.json", import.meta.url), "utf-8"));
 
+export class AIError extends Error {
+    constructor(message: string, public readonly model: string) {
+        super(message);
+        this.name = "AIError";
+    }
+}
+
+export class AIRateLimitError extends AIError {
+    constructor(message: string, model: string) {
+        super(message, model);
+        this.name = "AIRateLimitError";
+    }
+}
+
 export abstract class BaseAIService<T> {
     private ajv: Ajv;
     private readonly validator: ValidateFunction<T>;
-    private readonly apiKey: string;
+    private static keyCooldowns: Map<string, number> = new Map();
+    private readonly apiKeys: string[];
+    private currentKeyIndex: number = 0;
+    private genAI: GoogleGenerativeAI;
     private readonly responseSchema: any;
-    private readonly genAI: GoogleGenerativeAI;
     protected abstract readonly modelName: string;
     protected abstract readonly systemPrompt: string;
 
     constructor(schema: any, apiKey?: string) {
-        const key = apiKey || process.env.GEMINI_API_KEY;
-        if (!key) throw new Error("GEMINI_API_KEY is not set in environment variables");
-        this.apiKey = key;
-        this.genAI = new GoogleGenerativeAI(this.apiKey);
+        const envKey = process.env.GEMINI_API_KEY || "";
+        if (apiKey) {
+            this.apiKeys = [apiKey];
+        } else {
+            this.apiKeys = envKey.split(",").map(k => k.trim()).filter(k => k.length > 0);
+        }
+
+        if (this.apiKeys.length === 0) {
+            throw new Error("GEMINI_API_KEY is not set in environment variables");
+        }
+
+        this.genAI = new GoogleGenerativeAI(this.apiKeys[0] as string);
 
         this.ajv = new Ajv({
             allErrors: true,
@@ -126,11 +150,11 @@ export abstract class BaseAIService<T> {
             try {
                 parsed = JSON.parse(cleanedText);
             } catch (jsonErr: any) {
-                logger.error("AI JSON Parse Error", { 
-                    error: jsonErr.message, 
+                logger.error("AI JSON Parse Error", {
+                    error: jsonErr.message,
                     model: this.modelName,
                     // Truncate to avoid logging full PII if parsing fails mid-way
-                    snippet: cleanedText.substring(0, 100) + "..." 
+                    snippet: cleanedText.substring(0, 100) + "..."
                 });
                 return null;
             }
@@ -144,7 +168,6 @@ export abstract class BaseAIService<T> {
                 });
                 return null;
             }
-
             return parsed;
         } catch (err: any) {
             const isTimeout = err.message === "AI_REQUEST_TIMEOUT";
@@ -152,9 +175,44 @@ export abstract class BaseAIService<T> {
 
             // Handle Retriable Failures (Rate Limits or Timeouts)
             if (isRateLimit || isTimeout) {
-                if (retryCount < 3) {
-                    const delayMs = Math.pow(2, retryCount) * 2000;
-                    logger.warn(`AI ${isTimeout ? "Timeout" : "Rate Limit"} hit. Retrying...`, {
+                const maxRetries = 5;
+
+                // If it's a rate limit and we have multiple keys, try rotating first
+                if (isRateLimit && this.apiKeys.length > 1 && retryCount < this.apiKeys.length) {
+                    const failedKey = this.apiKeys[this.currentKeyIndex] as string;
+                    // Mark key as "on cooldown" for 60 seconds
+                    BaseAIService.keyCooldowns.set(failedKey, Date.now() + 60000);
+
+                    // Find next available key
+                    let foundKey = false;
+                    for (let i = 0; i < this.apiKeys.length; i++) {
+                        this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
+                        const key = this.apiKeys[this.currentKeyIndex] as string;
+                        const cooldownUntil = BaseAIService.keyCooldowns.get(key) || 0;
+
+                        if (Date.now() > cooldownUntil) {
+                            foundKey = true;
+                            break;
+                        }
+                    }
+
+                    if (foundKey) {
+                        const nextKey = this.apiKeys[this.currentKeyIndex] as string;
+                        this.genAI = new GoogleGenerativeAI(nextKey);
+                        logger.info(`AI Rate Limit hit. Rotating to fresh API Key #${this.currentKeyIndex + 1}...`, {
+                            model: this.modelName
+                        });
+                        // Retry immediately with the new key
+                        return this.callAI(input, retryCount + 1);
+                    } else {
+                        logger.warn(`AI Rate Limit hit. All ${this.apiKeys.length} keys are currently exhausted/cooling down.`);
+                    }
+                }
+
+                if (retryCount < 10) {
+                    // Exponential backoff with jitter: (2^retry * 3000) + random(0, 1000)
+                    const delayMs = Math.pow(2, retryCount) * 3000 + Math.floor(Math.random() * 1000);
+                    logger.warn(`AI ${isTimeout ? "Timeout" : "Rate Limit"} hit. Retrying (Attempt ${retryCount + 1})...`, {
                         attempt: retryCount + 1,
                         delayMs,
                         model: this.modelName
@@ -162,10 +220,14 @@ export abstract class BaseAIService<T> {
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     return this.callAI(input, retryCount + 1);
                 }
+
+                if (isRateLimit) {
+                    throw new AIRateLimitError(`AI rate limit exceeded after 10 retries across all keys`, this.modelName);
+                }
             }
 
             logger.error(`AI Service Error (${this.modelName})`, { error: err.message });
-            return null;
+            throw new AIError(err.message || "Unknown AI service error", this.modelName);
         }
     }
 }

@@ -140,6 +140,42 @@ export const recruiterSchemas = {
                 }
             }
         }
+    },
+
+    RecruiterAnalytics: {
+        type: "object",
+        required: ["success", "data"],
+        properties: {
+            success: { type: "boolean", example: true },
+            data: {
+                type: "object",
+                required: ["totalJobs", "pending", "shortlisted", "hired", "history"],
+                properties: {
+                    totalJobs: { type: "integer", example: 12, description: "Total number of jobs created by the recruiter" },
+                    pending: { type: "integer", example: 45, description: "Number of pending applications" },
+                    shortlisted: { type: "integer", example: 10, description: "Number of shortlisted candidates" },
+                    hired: { type: "integer", example: 2, description: "Number of hired candidates" },
+                    history: {
+                        type: "array",
+                        description: "Last 5 jobs created by the recruiter",
+                        items: {
+                            type: "object",
+                            properties: {
+                                _id: { type: "string", example: "661f1b2c3d4e5f6a7b8c9d0e" },
+                                title: { type: "string", example: "Senior Backend Engineer" },
+                                createdAt: { type: "string", format: "date-time" },
+                                metadata: {
+                                    type: "object",
+                                    properties: {
+                                        status: { type: "string", example: "published" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 };
 
@@ -237,6 +273,28 @@ export const recruiterPaths = {
                         }
                     }
                 },
+                "500": { $ref: "#/components/responses/InternalError" }
+            }
+        }
+    },
+
+    "/api/v1/recruiters/analytics": {
+        get: {
+            tags: ["Recruiters"],
+            summary: "Get recruiter analytics",
+            description: "Returns statistics about recruiter's jobs and applications (pending, shortlisted, hired) and recent activity history. \n\n**Required role:** `recruiter` ",
+            security: [{ BearerAuth: [] }],
+            responses: {
+                "200": {
+                    description: "Analytics retrieved successfully",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/RecruiterAnalytics" }
+                        }
+                    }
+                },
+                "401": { $ref: "#/components/responses/Unauthorized" },
+                "403": { $ref: "#/components/responses/Forbidden" },
                 "500": { $ref: "#/components/responses/InternalError" }
             }
         }

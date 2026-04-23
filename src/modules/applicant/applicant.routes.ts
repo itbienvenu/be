@@ -70,6 +70,12 @@ export class ApplicantRoutes {
             (req, res) => this.applicantController.generateCoverLetter(req, res)
         );
 
+        // Get applicant analytics
+        this.router.get(
+            "/analytics",
+            authMiddleware,
+            (req, res) => this.applicantController.getAnalytics(req, res)
+        );
     }
 }
 

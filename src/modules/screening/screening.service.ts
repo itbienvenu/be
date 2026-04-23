@@ -75,15 +75,28 @@ export class ScreeningService {
                 };
             });
 
-            // 4. ONE batch call to Gemini — all candidates sent together.
+            // 4. Batch call to Gemini — processed in CHUNKS of 5 to avoid 429 rate limits.
             const screeningRunAt = new Date();
-            const aiResponse = await this.ai.batchScreen(job, candidates);
-            if (!aiResponse) {
-                logger.warn(`ScreeningService: AI batch call returned null for job ${jobId} — defaulting all signals to 0`);
+            const chunkSize = 5;
+            const aiResults: AICandidate[] = [];
+
+            for (let i = 0; i < candidates.length; i += chunkSize) {
+                const chunk = candidates.slice(i, i + chunkSize);
+                logger.info(`ScreeningService: Processing chunk ${Math.floor(i/chunkSize) + 1}/${Math.ceil(candidates.length/chunkSize)} for job ${jobId}...`);
+                
+                const chunkResponse = await this.ai.batchScreen(job, chunk);
+                if (chunkResponse?.candidates) {
+                    aiResults.push(...chunkResponse.candidates);
+                }
+
+                // Small cool-down between chunks if there are more to process
+                if (i + chunkSize < candidates.length) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
             }
 
             const aiResultMap = new Map<string, AICandidate>(
-                (aiResponse?.candidates ?? []).map(c => [c.applicant_id, c])
+                aiResults.map(c => [c.applicant_id, c])
             );
 
             // 5. Score each candidate deterministically.
@@ -140,6 +153,7 @@ export class ScreeningService {
             first_name: app.first_name ?? "",
             last_name: app.last_name ?? "",
             headline: app.headline ?? "",
+            profile: app.profile,
             screening_result: app.screening_result,
         }));
     }
@@ -158,6 +172,7 @@ export class ScreeningService {
                 first_name: profile?.first_name ?? "",
                 last_name: profile?.last_name ?? "",
                 headline: profile?.headline ?? "",
+                profile: profile!,
                 screening_result: c.screening_result,
             };
         });

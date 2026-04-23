@@ -225,7 +225,8 @@ export class JobRepository {
             "physical_requirements",
             "languages",
             "work_conditions",
-            "travel_required"
+            "travel_required",
+            "scoring_config"
         ]);
 
         const flatUpdate: Record<string, any> = { "metadata.updated_at": new Date().toISOString() };
@@ -395,5 +396,48 @@ export class JobRepository {
         cache.deleteByPrefix("jobs:all:");
         cache.deleteByPrefix(`jobs:recruiter:${recruiterId}:`);
         return true;
+    }
+
+    async getRecruiterStats(recruiterId: string) {
+        if (!ObjectId.isValid(recruiterId)) return null;
+        const db = await getDb();
+        const rid = new ObjectId(recruiterId);
+
+        const totalJobs = await db.collection("jobs").countDocuments({ recruiterId: rid });
+        
+        const stats = await db.collection("applications").aggregate([
+            {
+                $lookup: {
+                    from: "jobs",
+                    localField: "jobId",
+                    foreignField: "_id",
+                    as: "job"
+                }
+            },
+            { $unwind: "$job" },
+            { $match: { "job.recruiterId": rid } },
+            {
+                $group: {
+                    _id: null,
+                    pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+                    shortlisted: { $sum: { $cond: [{ $eq: ["$status", "shortlisted"] }, 1, 0] } },
+                    hired: { $sum: { $cond: [{ $eq: ["$status", "hired"] }, 1, 0] } }
+                }
+            }
+        ]).toArray();
+
+        const history = await db.collection("jobs").find({ recruiterId: rid })
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .project({ title: 1, createdAt: 1, "metadata.status": 1 })
+            .toArray();
+
+        return {
+            totalJobs,
+            pending: stats[0]?.pending || 0,
+            shortlisted: stats[0]?.shortlisted || 0,
+            hired: stats[0]?.hired || 0,
+            history
+        };
     }
 }

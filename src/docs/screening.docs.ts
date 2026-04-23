@@ -92,6 +92,7 @@ export const screeningSchemas = {
             first_name:     { type: "string", example: "Alice" },
             last_name:      { type: "string", example: "Uwimana" },
             headline:       { type: "string", example: "Full-Stack Software Engineer" },
+            profile:        { $ref: "#/components/schemas/ApplicantProfile" },
             screening_result: { $ref: "#/components/schemas/ScreeningResult" }
         }
     }

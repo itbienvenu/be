@@ -181,6 +181,45 @@ export const applicantSchemas = {
             highlights: { type: "array", items: { type: "string" }, example: ["Focused on 3 years of React experience", "Emphasized leadership skills"] },
             tips: { type: "string", example: "Remember to mention the specific project you worked on at Zipline." }
         }
+    },
+
+    ApplicantAnalytics: {
+        type: "object",
+        required: ["success", "data"],
+        properties: {
+            success: { type: "boolean", example: true },
+            data: {
+                type: "object",
+                required: ["totalApplications", "recentApplications"],
+                properties: {
+                    totalApplications: { type: "integer", example: 5, description: "Total number of job applications sent" },
+                    recentApplications: {
+                        type: "array",
+                        description: "Last 5 job applications sent",
+                        items: {
+                            type: "object",
+                            properties: {
+                                _id: { type: "string", example: "661f1b2c3d4e5f6a7b8c9d0e" },
+                                status: { type: "string", example: "shortlisted" },
+                                appliedAt: { type: "string", format: "date-time" },
+                                job: {
+                                    type: "object",
+                                    properties: {
+                                        title: { type: "string", example: "Software Engineer" },
+                                        company: {
+                                            type: "object",
+                                            properties: {
+                                                name: { type: "string", example: "Zipline" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 };
 
@@ -440,6 +479,27 @@ export const applicantPaths = {
                                     data: { $ref: "#/components/schemas/CoverLetterResponse" }
                                 }
                             }
+                        }
+                    }
+                },
+                "401": { $ref: "#/components/responses/Unauthorized" },
+                "500": { $ref: "#/components/responses/InternalError" }
+            }
+        }
+    },
+
+    "/api/v1/applicants/analytics": {
+        get: {
+            tags: ["Applicants"],
+            summary: "Get applicant analytics",
+            description: "Returns statistics about applicant's applications (total sent) and recent job application history. \n\n**Required role:** any authenticated user",
+            security: [{ BearerAuth: [] }],
+            responses: {
+                "200": {
+                    description: "Analytics retrieved successfully",
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/ApplicantAnalytics" }
                         }
                     }
                 },

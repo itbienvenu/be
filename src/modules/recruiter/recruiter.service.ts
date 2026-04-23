@@ -1,11 +1,18 @@
 import { RecruiterRepository } from "./recruiter.repository.js";
+import { JobRepository } from "@/modules/job/job.repository.js";
 import type { RecruiterJSON, RecruiterProfileJSON } from "./recruiter.types.js";
 
 export class RecruiterService {
     private recruiterRepo: RecruiterRepository;
+    private jobRepo: JobRepository;
 
     constructor() {
         this.recruiterRepo = new RecruiterRepository();
+        this.jobRepo = new JobRepository();
+    }
+
+    async getAnalytics(userId: string) {
+        return this.jobRepo.getRecruiterStats(userId);
     }
 
     /**

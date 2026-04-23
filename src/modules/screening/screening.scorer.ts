@@ -104,12 +104,29 @@ export class ScreeningScorer {
             ...(aiUnavailable && { ai_unavailable: true as const }),
         };
 
+        // Strict Status Logic:
+        // 1. If disqualified by hard rules, they are 'rejected' unless their final_score 
+        //    is exceptionally high (>= 85), in which case we shortlist but flag the gaps.
+        // 2. If not disqualified, they must still meet a minimum threshold (>= 60) to be shortlisted.
+        let status: "shortlisted" | "rejected" = "rejected";
+        
+        if (disqual.disqualified) {
+            if (finalScore >= 85) {
+                status = "shortlisted";
+            } else {
+                status = "rejected";
+            }
+        } else {
+            // Not disqualified, but must still be a good match
+            status = finalScore >= 60 ? "shortlisted" : "rejected";
+        }
+
         return {
             application_id: candidate.application_id,
             applicant_id:   candidate.applicant_id,
             appliedAt:      candidate.appliedAt,
             screening_result: result,
-            new_status: disqual.disqualified ? "rejected" : "shortlisted",
+            new_status: status,
         };
     }
 
@@ -264,15 +281,25 @@ export class ScreeningScorer {
      * The final score is rounded to 2dp and expressed on a 0–100 scale.
      */
     private computeFinalScore(breakdown: DimensionBreakdown, job: JobJSON): number {
-        const w = job.scoring_config.weights;
-        const weightSum = w.skills + w.experience + w.education + w.resources + w.soft_skills;
+        // Defensive access: ensure weights exist, fallback to equal distribution if missing
+        const w = job.scoring_config?.weights ?? {
+            skills: 0.2,
+            experience: 0.2,
+            education: 0.2,
+            resources: 0.2,
+            soft_skills: 0.2
+        };
+        const weightSum = (w.skills ?? 0) + (w.experience ?? 0) + (w.education ?? 0) + (w.resources ?? 0) + (w.soft_skills ?? 0);
 
         // Normalise weights so they always sum to 1.0.
         // If the job is correctly configured (sum ≈ 1.0) this is a no-op.
         // If misconfigured, we self-heal and log a warning so it's detectable.
         const epsilon = 0.0001;
-        let skills = w.skills, experience = w.experience, education = w.education,
-            resources = w.resources, soft_skills = w.soft_skills;
+        let skills = w.skills ?? 0, 
+            experience = w.experience ?? 0, 
+            education = w.education ?? 0,
+            resources = w.resources ?? 0, 
+            soft_skills = w.soft_skills ?? 0;
 
         if (Math.abs(weightSum - 1.0) > epsilon) {
             if (weightSum <= 0) {
@@ -323,7 +350,11 @@ export class ScreeningScorer {
         totalYears: number
     ): { disqualified: boolean; reasons: string[] } {
         const reasons: string[] = [];
-        const rules = job.scoring_config.rules;
+        // Defensive access: default to non-strict rules if missing
+        const rules = job.scoring_config?.rules ?? {
+            required_skills_must_match: false,
+            min_experience_required: false
+        };
 
         // Rule A — required skills must all be present
         if (rules.required_skills_must_match) {
@@ -336,12 +367,14 @@ export class ScreeningScorer {
             }
         }
 
-        // Rule B — minimum years of experience
+        // Rule B — minimum years of experience (with 15% "human" tolerance)
         if (rules.min_experience_required) {
             const minYears = job.requirements?.experience?.min_years ?? 0;
-            if (minYears > 0 && totalYears < minYears) {
+            const toleranceFactor = 0.85; // 15% tolerance (e.g., 1.7 years matches a 2-year requirement)
+            
+            if (minYears > 0 && totalYears < (minYears * toleranceFactor)) {
                 reasons.push(
-                    `Experience below minimum: ${totalYears.toFixed(1)} years provided, ${minYears} required`
+                    `Experience significantly below minimum: ${totalYears.toFixed(1)} years provided, ${minYears} required`
                 );
             }
         }
@@ -367,8 +400,14 @@ export class ScreeningScorer {
 
         for (const entry of experience) {
             const start = new Date(entry.start_date);
-            const end   = entry.is_current || !entry.end_date ? asOf : new Date(entry.end_date);
-            const days  = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+            // Cap the end date at 'asOf' (today) to avoid "future experience" hallucinations
+            let end = entry.is_current || !entry.end_date ? asOf : new Date(entry.end_date);
+            
+            if (end > asOf) {
+                end = asOf;
+            }
+
+            const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
             if (days > 0) totalDays += days;
         }
 

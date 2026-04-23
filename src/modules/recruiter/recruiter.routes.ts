@@ -29,6 +29,13 @@ export class RecruiterRoutes {
             this.authMiddleware.requireRole("recruiter"),
             (req, res) => this.recruiterController.getProfile(req, res)
         );
+
+        this.router.get(
+            "/analytics",
+            this.authMiddleware.authenticate,
+            this.authMiddleware.requireRole("recruiter"),
+            (req, res) => this.recruiterController.getAnalytics(req, res)
+        );
     }
 }
 

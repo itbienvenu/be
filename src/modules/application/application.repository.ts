@@ -151,4 +151,41 @@ export class ApplicationRepository {
         );
         return result.modifiedCount > 0;
     }
+
+    async getApplicantStats(applicantId: string) {
+        if (!ObjectId.isValid(applicantId)) return null;
+        const db = await getDb();
+        const aid = new ObjectId(applicantId);
+
+        const totalApplications = await db.collection(this.collection).countDocuments({ applicantId: aid });
+        
+        const recentApplications = await db.collection(this.collection).aggregate([
+            { $match: { applicantId: aid } },
+            {
+                $lookup: {
+                    from: "jobs",
+                    localField: "jobId",
+                    foreignField: "_id",
+                    as: "job"
+                }
+            },
+            { $unwind: "$job" },
+            {
+                $project: {
+                    _id: 1,
+                    status: 1,
+                    appliedAt: 1,
+                    "job.title": 1,
+                    "job.company.name": 1
+                }
+            },
+            { $sort: { appliedAt: -1 } },
+            { $limit: 5 }
+        ]).toArray();
+
+        return {
+            totalApplications,
+            recentApplications
+        };
+    }
 }
