@@ -209,7 +209,7 @@ export abstract class BaseAIService<T> {
                     }
                 }
 
-                if (retryCount < 10) {
+                if (retryCount < maxRetries) {
                     // Exponential backoff with jitter: (2^retry * 3000) + random(0, 1000)
                     const delayMs = Math.pow(2, retryCount) * 3000 + Math.floor(Math.random() * 1000);
                     logger.warn(`AI ${isTimeout ? "Timeout" : "Rate Limit"} hit. Retrying (Attempt ${retryCount + 1})...`, {
@@ -222,7 +222,7 @@ export abstract class BaseAIService<T> {
                 }
 
                 if (isRateLimit) {
-                    throw new AIRateLimitError(`AI rate limit exceeded after 10 retries across all keys`, this.modelName);
+                    throw new AIRateLimitError(`AI rate limit exceeded after ${maxRetries} retries across all keys`, this.modelName);
                 }
             }
 
@@ -230,6 +230,8 @@ export abstract class BaseAIService<T> {
             throw new AIError(err.message || "Unknown AI service error", this.modelName);
         }
     }
+
+
 }
 
 /**

@@ -30,9 +30,6 @@ v1.use("/recruiters",   recruiterRoutes.router);
 v1.use("/applications", applicationRoutes.router);
 v1.use("/sourcing",     sourcingRoutes.router);
 
-v1.get("/debug-sentry", function debugSentryHandler() {
-	throw new Error("My first Sentry error!");
-});
 
 // Screening is nested under /jobs/:jobId — mergeParams handles the param inheritance
 v1.use("/jobs/:jobId",  screeningRoutes.router);
