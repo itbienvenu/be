@@ -405,23 +405,23 @@ export class JobRepository {
 
         const totalJobs = await db.collection("jobs").countDocuments({ recruiterId: rid });
         
-        const stats = await db.collection("applications").aggregate([
+        const stats = await db.collection("jobs").aggregate([
+            { $match: { recruiterId: rid } },
             {
                 $lookup: {
-                    from: "jobs",
-                    localField: "jobId",
-                    foreignField: "_id",
-                    as: "job"
+                    from: "applications",
+                    localField: "_id",
+                    foreignField: "jobId",
+                    as: "apps"
                 }
             },
-            { $unwind: "$job" },
-            { $match: { "job.recruiterId": rid } },
+            { $unwind: "$apps" },
             {
                 $group: {
                     _id: null,
-                    pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
-                    shortlisted: { $sum: { $cond: [{ $eq: ["$status", "shortlisted"] }, 1, 0] } },
-                    hired: { $sum: { $cond: [{ $eq: ["$status", "hired"] }, 1, 0] } }
+                    pending: { $sum: { $cond: [{ $eq: ["$apps.status", "pending"] }, 1, 0] } },
+                    shortlisted: { $sum: { $cond: [{ $eq: ["$apps.status", "shortlisted"] }, 1, 0] } },
+                    hired: { $sum: { $cond: [{ $eq: ["$apps.status", "hired"] }, 1, 0] } }
                 }
             }
         ]).toArray();

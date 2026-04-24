@@ -1,9 +1,11 @@
+import "./instrument.js";
 import express, { type Request, type Response, type NextFunction } from 'express';
 import "dotenv/config";
 import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
+import * as Sentry from "@sentry/node";
 import v1 from "./routes/v1.js";
 import { swaggerSpec } from "./docs/swagger.js";
 import { requestLogger } from './shared/middleware/request-logger.middleware.js';
@@ -81,6 +83,11 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.send('OK');
 });
+
+
+// Error handling
+
+Sentry.setupExpressErrorHandler(app);
 
 
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
