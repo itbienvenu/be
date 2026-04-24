@@ -24,8 +24,8 @@ const REQUIRED_ENV_VARS = [
 
 const missing = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
 if (missing.length > 0) {
-  console.error(`[STARTUP] Missing required environment variables: ${missing.join(", ")}`);
-  console.error("[STARTUP] Server will not start. Set the missing variables and restart.");
+  logger.error(`[STARTUP] Missing required environment variables: ${missing.join(", ")}`);
+  logger.error("[STARTUP] Server will not start. Set the missing variables and restart.");
   process.exit(1);
 }
 

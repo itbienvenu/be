@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { Db, MongoClient } from 'mongodb';
+import logger from '../shared/utils/logger.js';
 dotenv.config();
 
 const mongodbUri = process.env.MONGODB_URI;
@@ -32,18 +33,18 @@ export async function getDb(): Promise<Db> {
 	dbPromise = (async () => {
 		try {
 			await client.connect();
-			console.log('Mongo connected');
+			logger.info('Mongo connected');
 			return client.db(process.env.MONGODB_DB_NAME || 'umurava');
 		} catch (error) {
 			dbPromise = null;
 
 			const err = error as Error;
 			if (/SSL|TLS|alert/i.test(err.message)) {
-				console.error(
+				logger.error(
 					'Mongo TLS handshake failed. Check Atlas IP whitelist, URI credentials, local network/proxy, and try Node 20 LTS if you are on Node 22.'
 				);
 			} else if (/selection timed out/i.test(err.message)) {
-				console.error(
+				logger.error(
 					'Mongo connection timed out. This is usually caused by your IP address not being whitelisted in MongoDB Atlas or a firewall blocking the connection.'
 				);
 			}
@@ -57,5 +58,5 @@ export async function getDb(): Promise<Db> {
 
 export async function closeConnection(): Promise<void> {
 	await client.close();
-	console.log('Mongo disconnected');
+	logger.info('Mongo disconnected');
 }
