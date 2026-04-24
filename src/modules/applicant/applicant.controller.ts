@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { ApplicantService } from "./applicant.service.js";
 import logger from "@/shared/utils/logger.js";
+import { AIRateLimitError, AIError } from "../ai/ai.service.js";
 
 export class ApplicantController {
     private applicantService: ApplicantService;
@@ -24,6 +25,19 @@ export class ApplicantController {
                 data
             });
         } catch (error: any) {
+            if (error instanceof AIRateLimitError) {
+                return res.status(429).json({ 
+                    success: false, 
+                    message: "CV parsing is currently busy. Please try again in a few moments." 
+                });
+            }
+            if (error instanceof AIError) {
+                return res.status(503).json({ 
+                    success: false, 
+                    message: "CV parsing service is temporarily unavailable. Please try again later." 
+                });
+            }
+
             logger.error("UPLOAD_CV_ERROR", error);
             res.status(500).json({ success: false, message: "Failed to process CV. Please ensure the file is a valid PDF and try again." });
         }
@@ -100,8 +114,43 @@ export class ApplicantController {
                 data: result
             });
         } catch (error: any) {
+            if (error instanceof AIRateLimitError) {
+                return res.status(429).json({ 
+                    success: false, 
+                    message: "Cover letter generator is busy. Please try again in a few moments." 
+                });
+            }
+            if (error instanceof AIError) {
+                return res.status(503).json({ 
+                    success: false, 
+                    message: "Cover letter service is temporarily unavailable." 
+                });
+            }
+
             logger.error("GENERATE_COVER_LETTER_ERROR", error);
             res.status(500).json({ success: false, message: "Failed to generate cover letter. Please try again later." });
+        }
+    }
+
+    /**
+     * Get applicant analytics
+     */
+    async getAnalytics(req: Request, res: Response) {
+        try {
+            const userId = (req as any).user?._id;
+            if (!userId) {
+                return res.status(401).json({ success: false, message: "Unauthorized" });
+            }
+
+            const stats = await this.applicantService.getAnalytics(userId);
+
+            res.status(200).json({
+                success: true,
+                data: stats
+            });
+        } catch (error: any) {
+            logger.error("APPLICANT_ANALYTICS_ERROR", error.message);
+            res.status(500).json({ success: false, message: "Internal server error" });
         }
     }
 }

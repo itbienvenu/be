@@ -1,5 +1,6 @@
 import { ApplicantRepository } from "./applicant.repository.js";
 import { JobRepository } from "@/modules/job/job.repository.js";
+import { ApplicationRepository } from "@/modules/application/application.repository.js";
 import { CVParserService, CoverLetterAIService } from "@/modules/ai/ai.service.js";
 import { PDFTool } from "@/shared/utils/pdfs-tool.js";
 import { CloudinaryTool } from "@/shared/utils/cloudinary-tool.js";
@@ -9,6 +10,7 @@ import type { ApplicantJSON, ApplicantProfileJSON } from "./applicant.types.js";
 export class ApplicantService {
     private applicantRepo: ApplicantRepository;
     private jobRepo: JobRepository;
+    private applicationRepo: ApplicationRepository;
     private cvParser: CVParserService;
     private coverLetterAI: CoverLetterAIService;
     private pdfTool: PDFTool;
@@ -17,6 +19,7 @@ export class ApplicantService {
     constructor() {
         this.applicantRepo = new ApplicantRepository();
         this.jobRepo = new JobRepository();
+        this.applicationRepo = new ApplicationRepository();
         this.cvParser = new CVParserService();
         this.coverLetterAI = new CoverLetterAIService();
         this.pdfTool = new PDFTool();
@@ -207,5 +210,9 @@ export class ApplicantService {
         }
 
         return result;
+    }
+
+    async getAnalytics(userId: string) {
+        return this.applicationRepo.getApplicantStats(userId);
     }
 }

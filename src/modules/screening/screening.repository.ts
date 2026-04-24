@@ -140,6 +140,7 @@ export class ScreeningRepository {
                     first_name:       "$applicant.profile.first_name",
                     last_name:        "$applicant.profile.last_name",
                     headline:         "$applicant.profile.headline",
+                    profile:          "$applicant.profile",
                     screening_result: 1
                 }
             }

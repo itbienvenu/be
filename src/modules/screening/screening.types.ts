@@ -93,6 +93,7 @@ export interface ShortlistEntry {
     first_name: string;
     last_name: string;
     headline: string;
+    profile: ApplicantProfileJSON;
     screening_result: ScreeningResult;
 }
 
