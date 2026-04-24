@@ -26,20 +26,22 @@ The platform uses Gemini API for candidate analysis, AJV for strict response val
 - [2. Problem Statement](#2-problem-statement)
 - [3. Scope Implemented](#3-scope-implemented)
 - [4. Core Features](#4-core-features)
-- [5. High-Level Architecture](#5-high-level-architecture)
+- [5. High-Level Architecture & Technical Design](#5-high-level-architecture--technical-design)
 - [6. AI Decision Flow](#6-ai-decision-flow)
-- [7. Prompt Engineering Approach](#7-prompt-engineering-approach)
-- [8. Tech Stack](#8-tech-stack)
-- [9. Technical Design Summary](#9-technical-design-summary)
-- [10. API Overview](#10-api-overview)
-- [11. Environment Variables](#11-environment-variables)
-- [12. Local Setup](#12-local-setup)
-- [13. Deployment](#13-deployment)
-- [14. Testing and Verification](#14-testing-and-verification)
-- [15. Assumptions and Limitations](#15-assumptions-and-limitations)
-- [16. Submission Checklist](#16-submission-checklist)
-- [17. Production Monitoring & Error Handling](#17-production-monitoring--error-handling)
-- [18. Team Members](#18-team-members)
+- [7. AI Scoring Logic](#7-ai-scoring-logic)
+- [8. Prompt Engineering Approach](#8-prompt-engineering-approach)
+- [9. Recruiter Decision Support](#9-recruiter-decision-support)
+- [10. Tech Stack](#10-tech-stack)
+- [11. API Overview](#11-api-overview)
+- [12. Environment Variables](#12-environment-variables)
+- [13. Local Setup](#13-local-setup)
+- [14. Deployment](#14-deployment)
+- [15. Testing and Verification](#16-testing-and-verification)
+- [16. Assumptions and Limitations](#17-assumptions-and-limitations)
+- [17. Submission Checklist](#18-submission-checklist)
+- [18. Production Monitoring & Error Handling](#19-production-monitoring--error-handling)
+- [19. AI Reliability & Key Rotation](#20-ai-reliability--key-rotation)
+- [20. Team Members](#21-team-members)
 
 ## 1. Hackathon Marking Criteria Coverage
 
@@ -108,38 +110,69 @@ graph TD
     end
 ```
 
+## 5. High-Level Architecture & Technical Design
+
+### System Overview
+
+```mermaid
+graph TD
+    Client[Recruiter UI / Consumer App] <-->|REST JSON| API[Node.js + Express + TypeScript]
+    API <-->|Query / Persist| DB[(MongoDB)]
+    API -->|Prompt + Parse| Gemini[Google Gemini API]
+    API -->|CV Files| Cloudinary[Cloudinary]
+
+    subgraph Screening Pipeline
+        Gemini --> Schema[AJV Schema Validation]
+        Schema --> Score[Weighted Scoring Engine]
+        Score --> Explain[Reasoning + Shortlist Output]
+    end
+```
+
+### Technical Design Principles
+- **Modular Layered Architecture**: Clear separation between routes, controllers, services, and repositories.
+- **AI Orchestration Logic**: A dedicated AI module manages prompts, interactions, and strict validation outside of business services.
+- **Stateless & Deterministic**: Scoring is pure math; given the same inputs, the engine always produces the exact same score.
+- **Security by Design**: JWT authentication, rate limiting, and origin-based CORS hardening.
+- **Safety & Quality**: Strict schema compliance via JSON response enforcement and AJV validation.
+
 ## 6. AI Decision Flow
 
-1. Recruiter triggers screening for a specific job.
-2. System fetches job criteria and all candidate profiles linked to that job.
-3. Gemini generates structured comparative insights.
-4. AJV validates AI output against expected schema.
-5. Scoring engine computes weighted score across key dimensions.
-6. Candidates are ranked and shortlist is returned.
-7. API includes human-readable reasoning for each shortlisted profile.
+1. **Trigger**: Recruiter initiates screening for a specific job via the dashboard.
+2. **Data Assembly**: The system fetches job criteria and all associated candidate profiles.
+3. **AI Inference**: Gemini generates structured comparative insights using role-specific prompt templates.
+4. **Validation**: AJV strictly validates the AI output against a predefined JSON schema.
+5. **Scoring**: The engine computes weighted scores across five key dimensions (Skills, Experience, Education, Resources, Soft Skills).
+6. **Ranking**: Candidates are ranked by score, and a final shortlist is prepared.
+7. **Delivery**: The API returns the ranked list with human-readable reasoning for every profile.
 
-### Scoring Dimensions
-- Skills
-- Experience
-- Education
-- Resources/portfolio signals
-- Soft skills
+## 7. AI Scoring Logic
 
-### Reliability and Explainability
-- Structured JSON response enforcement.
-- Retry handling for temporary AI quota/rate-limit failures.
-- Deterministic fallback reasoning when AI output is unavailable.
-- Explicit score and reason fields for recruiter transparency.
+The platform uses a **stateless, deterministic scoring engine** (`ScreeningScorer`) to ensure consistent results. Candidates are evaluated across five key dimensions, each producing a score between `0.0` and `1.0`.
 
-## 7. Prompt Engineering Approach
+### The Five Dimensions
+1.  **Skills (Weighted Average)**: Evaluates hard skills against job requirements. AI signals (0 = absent, 0.5 = partial, 1.0 = full match) are multiplied by the skill's importance weight.
+2.  **Experience (Linear Scale)**: Calculated as `min(candidateYears / requiredYears, 1.0)`. Note: A 15% tolerance is applied (e.g., 1.7 years can satisfy a 2-year requirement if other signals are strong).
+3.  **Education (Tier Comparison)**: Degrees are mapped to numeric tiers (PhD: 1.0, Master: 0.9, Bachelor: 0.75, etc.). The score is the ratio of the candidate's highest degree to the job's requirement.
+4.  **Resources (Proportion)**: Checks for required tools/resources (e.g., Laptop, Stable Internet) in the candidate's profile and CV text.
+5.  **Soft Skills (Weighted Average)**: AI-inferred signals for interpersonal traits (e.g., Communication, Leadership) weighted by importance.
+
+### Final Score Formula
+The final score (0–100) is a weighted combination of these dimensions based on the recruiter's custom configuration:
+`Final Score = Σ (Dimension Score × Category Weight) × 100`
+
+### Disqualification & Status
+- **Shortlisted**: Candidates with a `Final Score >= 60` (or `85` if hard rules are violated but score is exceptional).
+- **Rejected**: Candidates falling below the threshold.
+- **Hard Rules**: Recruiters can enforce "Must have required skills" or "Must meet minimum experience," which triggers an automatic status flag even if the score is high.
+
+## 8. Prompt Engineering Approach
 
 This system uses documented, version-controlled prompt templates as part of the production AI pipeline.
 
-Prompt engineering documentation in this repository covers:
-- prompt design strategy,
-- prompt files used in production,
-- representative prompt template excerpts,
-- output guardrails (schema validation, deterministic config, fallback behavior).
+### Prompting Pattern
+- **System Separation**: System prompts are loaded from versioned files, ensuring logic is decoupled from code.
+- **Schema-Driven Prompting**: Every request includes a built-in JSON schema (using `response_mime_type: "application/json"`) that forces the AI to structure its response exactly as expected.
+- **Output Guardrails**: Includes AJV validation, deterministic temperature (0), and fallback behavior for AI failures.
 
 ### Prompt Catalog Used in This Backend
 
@@ -151,71 +184,31 @@ Prompt engineering documentation in this repository covers:
 | src/modules/ai/prompts/screening-batch.prompt.txt | Evaluate all candidates for a job in batch |
 | src/modules/ai/prompts/cover-letter.prompt.txt | Generate or evaluate cover letter content |
 
-### Prompting Pattern
+## 9. Recruiter Decision Support
 
-- System prompt is loaded from prompt files and versioned with code.
-- Runtime input is injected as a separate Input block.
-- Gemini response is required as JSON and validated against schema.
-- Generation config is tuned for consistent output (temperature 0).
+The AI does not "hire" candidates; it acts as a **high-precision filter** and **decision-support tool** for recruiters.
 
-### Representative Prompt Template (Screening)
+### How Recruiters Use the Output
+1.  **Ranked Shortlist**: Recruiters start with the most qualified candidates at the top of their dashboard.
+2.  **Explainable Reasoning**: For every candidate, the AI provides:
+    *   **Strengths**: Direct evidence of why they match (e.g., "5+ years of React experience").
+    *   **Gaps**: Honest assessment of missing pieces (e.g., "Lacks experience with Kubernetes").
+    *   **Recommendation**: A natural-language summary of their fit.
+3.  **Dimension Breakdown**: Recruiters can see exactly *why* a score is high or low (e.g., "Candidate has great skills but lacks the required Master's degree").
+4.  **Human-in-the-Loop**: Recruiters use these insights to quickly decide whom to interview, drastically reducing manual "CV skimming" time while maintaining final oversight.
 
-```text
-You are an expert technical recruiter performing a structured candidate screening.
+## 10. Tech Stack
 
-You will receive:
-1. Job context (skills, requirements, seniority)
-2. Candidate profiles
+- **Language**: TypeScript
+- **Backend**: Node.js + Express
+- **Database**: MongoDB
+- **AI/LLM**: Gemini API (mandatory)
+- **File Parsing**: pdf-parse, xlsx
+- **Validation**: AJV
+- **Documentation**: Swagger (OpenAPI)
+- **Monitoring**: Sentry
 
-Return JSON only with, for each candidate:
-- applicant_id
-- skill_signals
-- soft_skill_signals
-- strengths
-- gaps
-- recommendation
-
-Do not output markdown. Do not add extra keys.
-```
-
-### Evaluation Alignment
-
-- Demonstrates intentional prompt engineering (explicit requirement).
-- Shows reproducibility and explainability.
-- Proves that scoring output is structured and recruiter-friendly.
-
-## 8. Tech Stack
-
-- Language: TypeScript
-- Backend: Node.js + Express
-- Database: MongoDB
-- AI/LLM: Gemini API (mandatory)
-- File parsing: pdf-parse, xlsx
-- Validation: AJV
-- Documentation: Swagger (OpenAPI)
-
-## 9. Technical Design Summary
-
-### Architecture Style
-- Modular layered backend with route, controller, service, and repository separation.
-- Clear boundary between business logic and AI orchestration logic.
-
-### Data and Processing Pipeline
-- Job intake and normalization into structured criteria.
-- Applicant ingestion from profile, spreadsheet, and resume channels.
-- Multi-candidate screening pipeline producing a ranked shortlist.
-
-### AI Safety and Output Quality Controls
-- Prompted Gemini responses are validated against expected schemas.
-- Retry and fallback mechanisms reduce screening interruptions.
-- Explainability fields are included by design to support recruiter trust.
-
-### Security and Reliability
-- JWT-based authentication for protected routes.
-- Rate limiting and middleware-based request protection.
-- Production logging and error handling for deployable operations.
-
-## 10. API Overview
+## 11. API Overview
 
 Base path: /api/v1
 
@@ -241,7 +234,7 @@ Full interactive docs:
 - GET /api/v1/docs
 - GET /api/v1/docs.json
 
-## 11. Environment Variables
+## 12. Environment Variables
 
 Create .env from .env.example and set:
 
@@ -251,7 +244,7 @@ Create .env from .env.example and set:
 | MONGODB_URI | MongoDB connection string |
 | JWT_SECRET | Access token secret |
 | REFRESH_SECRET | Refresh token secret |
-| GEMINI_API_KEY | Google Gemini API key |
+| GEMINI_API_KEY | Google Gemini API key (supports multiple comma-separated keys for auto-rotation) |
 | GEMINI_AI_MODEL | Gemini model name |
 | SENTRY_DSN | Sentry DSN used by the SDK |
 | SENTRY_RELEASE | Optional release name or commit SHA |
@@ -260,7 +253,7 @@ Create .env from .env.example and set:
 | CLOUDINARY_API_KEY | Cloudinary API key |
 | CLOUDINARY_API_SECRET | Cloudinary API secret |
 
-## 12. Local Setup
+## 13. Local Setup
 
 Prerequisites:
 - Node.js 20+
@@ -280,7 +273,7 @@ Production start:
 npm start
 ```
 
-## 13. Deployment
+## 14. Deployment
 
 Recommended:
 - Backend: Railway / Render / Fly.io
@@ -291,7 +284,7 @@ Deployment expectations covered:
 - environment variables configured in host dashboard,
 - production-safe logging and error handling.
 
-## 14. Testing and Verification
+## 15. Testing and Verification
 
 Run tests:
 
@@ -307,7 +300,7 @@ npx tsx scripts/test-job.ts
 npx tsx scripts/test-cv.ts
 ```
 
-## 15. Assumptions and Limitations
+## 16. Assumptions and Limitations
 
 - PDF is the supported resume document format for CV upload routes.
 - Batch CV upload has an upper limit for stability.
@@ -315,7 +308,7 @@ npx tsx scripts/test-cv.ts
 - External provider quotas (Gemini, Cloudinary) may impact throughput.
 - Final hiring decision remains with recruiter (human-in-the-loop).
 
-## 16. Submission Checklist
+## 17. Submission Checklist
 
 - Backend docs URL: https://umurava-be.up.railway.app/api/v1/docs/
 - Frontend URL: https://umurava-fe.vercel.app/
@@ -328,7 +321,7 @@ npx tsx scripts/test-cv.ts
 - Prompt engineering approach documented with prompt catalog and template.
 - Assumptions and limitations documented.
 
-## 17. Production Monitoring & Error Handling
+## 18. Production Monitoring & Error Handling
 
 This system uses Sentry for production error tracking and resolution automation.
 
@@ -369,7 +362,19 @@ Environment variable for Sentry:
 - Automated PR submission reduces manual debugging overhead.
 - Full GitHub audit trail for compliance and transparency.
 
-## 18. Team Members
+## 19. AI Reliability & Key Rotation
+
+To ensure uninterrupted service during high-volume document parsing or screening, this backend implements a smart **API Key Rotation** strategy:
+
+- **Multi-Key Support**: You can provide multiple Gemini API keys in the `GEMINI_API_KEY` variable (comma-separated).
+- **Auto-Failover**: If a key hits a rate limit (429 error) or quota limit, the system automatically rotates to the next available key and retries the request.
+- **Resilience**: This prevents the system from stopping mid-process, which is critical for large-scale candidate screening.
+
+| Variable | Support |
+|---|---|
+| GEMINI_API_KEY | `key1,key2,key3` |
+
+## 20. Team Members
 
 1. MWIMULE BIENVENU - Full Stack Developer, Frontend and Backend
    - Email: bienvenugashema@gmail.com
