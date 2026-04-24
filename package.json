@@ -54,7 +54,8 @@
     "@types/winston": "^2.4.4",
     "nodemon": "^3.1.14",
     "tsx": "^4.21.0",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "yaml": "^2.8.3"
   },
   "overrides": {
     "glob": "^10.4.5",
