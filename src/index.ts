@@ -19,6 +19,7 @@ const REQUIRED_ENV_VARS = [
   "REFRESH_SECRET",
   "MONGODB_URI",
   "GEMINI_API_KEY",
+  "SENTRY_DSN",
 ];
 
 const missing = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
