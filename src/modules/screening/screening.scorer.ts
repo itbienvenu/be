@@ -12,6 +12,7 @@
  */
 
 import type { JobJSON, Skill, Resource, SoftSkill } from "@/modules/job/job.types.js";
+import logger from "@/shared/utils/logger.js";
 import type {
     CandidateInput,
     ScoredCandidate,
@@ -305,7 +306,7 @@ export class ScreeningScorer {
             if (weightSum <= 0) {
                 // Degenerate case — fall back to equal weights
                 skills = experience = education = resources = soft_skills = 0.2;
-                console.warn(
+                logger.warn(
                     `[ScreeningScorer] Job scoring_config weights sum to ${weightSum} (invalid). ` +
                     `Falling back to equal weights (0.2 each). Job: ${(job as any)._id ?? "unknown"}`
                 );
@@ -315,7 +316,7 @@ export class ScreeningScorer {
                 education   = w.education   / weightSum;
                 resources   = w.resources   / weightSum;
                 soft_skills = w.soft_skills / weightSum;
-                console.warn(
+                logger.warn(
                     `[ScreeningScorer] Job scoring_config weights sum to ${weightSum.toFixed(4)} (expected 1.0). ` +
                     `Normalised automatically. Job: ${(job as any)._id ?? "unknown"}`
                 );
