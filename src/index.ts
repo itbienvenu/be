@@ -13,7 +13,6 @@ import logger from './shared/utils/logger.js';
 import { initIndexes } from './init-indexes.js';
 
 // ── Startup environment guard ─────────────────────────────────────────────────
-// Fail fast before binding the port so misconfigured deployments are obvious.
 const REQUIRED_ENV_VARS = [
   "JWT_SECRET",
   "REFRESH_SECRET",

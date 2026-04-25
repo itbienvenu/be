@@ -77,7 +77,7 @@ export class ScreeningService {
 
             // 4. Batch call to Gemini — processed in CHUNKS of 5 to avoid 429 rate limits.
             const screeningRunAt = new Date();
-            const chunkSize = 5;
+            const chunkSize = 15;
             const aiResults: AICandidate[] = [];
 
             for (let i = 0; i < candidates.length; i += chunkSize) {
