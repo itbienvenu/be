@@ -19,7 +19,7 @@ import type { BatchAIResponse, CandidateInput } from "@/modules/screening/screen
 import type { JobJSON } from "@/modules/job/job.types.js";
 
 export class ScreeningAIService extends BaseAIService<BatchAIResponse> {
-    protected readonly modelName = "gemini-2.0-flash-lite";
+    protected readonly modelName = process.env.GEMINI_AI_MODEL || "gemini-1.5-flash";
     protected readonly systemPrompt: string;
 
     constructor(apiKey?: string) {
