@@ -59,7 +59,7 @@ export class ApplicantService {
                 ...cvData
             };
         } catch (error: any) {
-            console.error("ApplicantService Error:", error.message);
+            logger.error("ApplicantService Error:", { message: error.message, stack: error.stack });
             throw error;
         }
     }
@@ -70,7 +70,7 @@ export class ApplicantService {
      */
     async updateProfile(userId: string, data: any): Promise<ApplicantJSON | null> {
         logger.info(`ApplicantService: Restructuring input payload for user ${userId.substring(0, 5)}...`);
-        
+
         // We use a flat object with dot notation to avoid overwriting the whole 'profile' object in Mongo
         const flatUpdate: any = {};
 
@@ -204,7 +204,7 @@ export class ApplicantService {
 
         // 4. Call AI to generate the letter
         const result = await this.coverLetterAI.generateCoverLetter(finalCvText, fullJobContext, data.instructions);
-        
+
         if (!result) {
             throw new Error("AI failed to generate cover letter");
         }

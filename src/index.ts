@@ -13,18 +13,18 @@ import logger from './shared/utils/logger.js';
 import { initIndexes } from './init-indexes.js';
 
 // ── Startup environment guard ─────────────────────────────────────────────────
-// Fail fast before binding the port so misconfigured deployments are obvious.
 const REQUIRED_ENV_VARS = [
   "JWT_SECRET",
   "REFRESH_SECRET",
   "MONGODB_URI",
   "GEMINI_API_KEY",
+  "SENTRY_DSN",
 ];
 
 const missing = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
 if (missing.length > 0) {
-  console.error(`[STARTUP] Missing required environment variables: ${missing.join(", ")}`);
-  console.error("[STARTUP] Server will not start. Set the missing variables and restart.");
+  logger.error(`[STARTUP] Missing required environment variables: ${missing.join(", ")}`);
+  logger.error("[STARTUP] Server will not start. Set the missing variables and restart.");
   process.exit(1);
 }
 
