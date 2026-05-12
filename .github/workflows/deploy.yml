@@ -45,6 +45,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.TARGET_DIR }}
+            echo "Current directory: $(pwd)"
             git pull origin ${{ github.ref_name }}
-            docker compose up -d --build backend
-            docker image prune -f
+
+            # Start all services (Backend + MongoDB)
+            docker compose up -d --build
+
+            # Wait a few seconds and check if backend is running
+            sleep 5
+            docker ps | grep backend
