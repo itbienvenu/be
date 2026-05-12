@@ -110,23 +110,6 @@ graph TD
     end
 ```
 
-## 5. High-Level Architecture & Technical Design
-
-### System Overview
-
-```mermaid
-graph TD
-    Client[Recruiter UI / Consumer App] <-->|REST JSON| API[Node.js + Express + TypeScript]
-    API <-->|Query / Persist| DB[(MongoDB)]
-    API -->|Prompt + Parse| Gemini[Google Gemini API]
-    API -->|CV Files| Cloudinary[Cloudinary]
-
-    subgraph Screening Pipeline
-        Gemini --> Schema[AJV Schema Validation]
-        Schema --> Score[Weighted Scoring Engine]
-        Score --> Explain[Reasoning + Shortlist Output]
-    end
-```
 
 ### Technical Design Principles
 - **Modular Layered Architecture**: Clear separation between routes, controllers, services, and repositories.
